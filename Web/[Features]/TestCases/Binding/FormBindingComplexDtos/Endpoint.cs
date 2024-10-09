@@ -1,5 +1,11 @@
 ﻿namespace TestCases.FormBindingComplexDtos;
 
+sealed class Request
+{
+    [FromForm]
+    public Book Book { get; set; }
+}
+
 sealed class Book
 {
     public string Title { get; set; }
@@ -25,7 +31,21 @@ sealed class Address
     public IFormFileCollection AlternativeImages { get; set; }
 }
 
-sealed class Endpoint : Endpoint<Book>
+sealed class Endpoint : Endpoint<Request>
 {
+    internal static Book? Result { get; private set; }
 
+    public override void Configure()
+    {
+        Post("test-cases/form-binding-complex-dtos");
+        AllowAnonymous();
+        AllowFileUploads();
+    }
+
+    public override Task HandleAsync(Request r, CancellationToken ct)
+    {
+        Result = r.Book;
+
+        return Task.CompletedTask;
+    }
 }
