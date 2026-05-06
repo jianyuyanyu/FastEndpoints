@@ -89,6 +89,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
                 return null;
 
             var promoted = false;
+            var mutationCtx = new OperationSchemaMutationContext(sharedCtx, operationKey);
             var schemaKey = PropertyNameResolver.GetSchemaPropertyName(promoteProp, NamingPolicy, docOpts.UsePropertyNamingPolicy);
 
             // replace the entire request body schema with the [FromBody]/[FromForm] property's type schema
@@ -104,7 +105,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
                 if (matchingKey is not null && resolvedSchema.Properties!.TryGetValue(matchingKey, out var propSchema))
                 {
                     content.Schema = propSchema;
-                    content.EnsureOperationLocalSchemaForMutation(sharedCtx, operationKey, "requestBody");
+                    content.EnsureOperationLocalSchemaForMutation(mutationCtx, "requestBody");
                     promoted = true;
                 }
             }
@@ -123,7 +124,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
                 if (patchArraySchema is not null)
                 {
                     patchContent.Schema = patchArraySchema;
-                    patchContent.EnsureOperationLocalSchemaForMutation(sharedCtx, operationKey, "requestBody.jsonPatch");
+                    patchContent.EnsureOperationLocalSchemaForMutation(mutationCtx, "requestBody.jsonPatch");
                 }
             }
 
@@ -289,6 +290,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
                                          ? null
                                          : BuildRequestExampleNode(exampleObj, state.PropsRemovedFromBody, promotedBodyProperty);
             JsonNode? fallbackExample = null;
+            var mutationCtx = new OperationSchemaMutationContext(sharedCtx, operationKey);
 
             if (exampleObj is not null and not IEnumerable && requestExampleNode is JsonObject obj)
             {
@@ -310,14 +312,14 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
 
                 if (hasDefaults || hasParams || requestExampleNode is not null)
                 {
-                    schema = content.EnsureOperationLocalSchemaForMutation(sharedCtx, operationKey, "requestBody");
+                    schema = content.EnsureOperationLocalSchemaForMutation(mutationCtx, "requestBody");
 
                     if (schema is null)
                         continue;
                 }
 
                 if (hasDefaults)
-                    ApplyDefaultValues(schema, defaultProps, operationKey);
+                    ApplyDefaultValues(schema, defaultProps, mutationCtx);
 
                 if (requestExampleNode is not null)
                 {
@@ -339,8 +341,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
                         continue;
 
                     var concreteProp = propSchema.EnsureSchemaForMutation(
-                        sharedCtx,
-                        operationKey,
+                        mutationCtx,
                         $"requestBody.{propName}",
                         localized => schema.Properties![propName] = localized);
 
@@ -377,7 +378,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
             return defaults;
         }
 
-        void ApplyDefaultValues(OpenApiSchema schema, Dictionary<string, System.ComponentModel.DefaultValueAttribute> defaultProps, string operationKey)
+        void ApplyDefaultValues(OpenApiSchema schema, Dictionary<string, System.ComponentModel.DefaultValueAttribute> defaultProps, OperationSchemaMutationContext mutationCtx)
         {
             if (schema.Properties is null)
                 return;
@@ -388,8 +389,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
                     continue;
 
                 var concreteProp = propSchema.EnsureSchemaForMutation(
-                    sharedCtx,
-                    operationKey,
+                    mutationCtx,
                     $"requestBody.{propName}",
                     localized => schema.Properties![propName] = localized);
 

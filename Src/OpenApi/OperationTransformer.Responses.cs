@@ -79,6 +79,8 @@ sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext
             if (operation.Responses is null)
                 return;
 
+            var mutationCtx = new OperationSchemaMutationContext(sharedCtx, operationKey);
+
             foreach (var response in operation.Responses.Values)
             {
                 if (response is not OpenApiResponse concreteResp || concreteResp.Content is not { Count: > 0 })
@@ -94,8 +96,7 @@ sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext
                         continue;
 
                     var schema = mediaType.Schema.EnsureSchemaForMutation(
-                        sharedCtx,
-                        operationKey,
+                        mutationCtx,
                         $"response.{contentType}.binary",
                         localized => mediaType.Schema = localized);
 
@@ -211,6 +212,8 @@ sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext
             if (operation.Responses is null)
                 return;
 
+            var mutationCtx = new OperationSchemaMutationContext(sharedCtx, operationKey);
+
             foreach (var (_, response) in operation.Responses)
             {
                 if (response.Content is null)
@@ -233,8 +236,7 @@ sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext
                         continue;
 
                     if (mediaType.Schema.EnsureSchemaForMutation(
-                            sharedCtx,
-                            operationKey,
+                            mutationCtx,
                             "response.polymorphism",
                             localized => mediaType.Schema = localized) is not OpenApiSchema responseSchema)
                         continue;
@@ -259,11 +261,12 @@ sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext
             var collectionElementType = responseDtoType is null ? null : OperationSchemaHelpers.TryGetCollectionElementType(responseDtoType);
             var descriptionType = collectionElementType ?? responseDtoType;
             var jsonNameToClrName = BuildJsonNameMap(descriptionType, NamingPolicy, docOpts.UsePropertyNamingPolicy);
+            var mutationCtx = new OperationSchemaMutationContext(sharedCtx, operationKey);
 
             foreach (var content in concreteResp.Content.Values)
             {
-                var schema = content.EnsureOperationLocalSchemaForMutation(sharedCtx, operationKey, schemaKey);
-                var descriptionTarget = collectionElementType is null ? schema : EnsureLocalArrayItemSchema(schema, operationKey, schemaKey);
+                var schema = content.EnsureOperationLocalSchemaForMutation(mutationCtx, schemaKey);
+                var descriptionTarget = collectionElementType is null ? schema : EnsureLocalArrayItemSchema(schema, mutationCtx, schemaKey);
 
                 if (descriptionTarget?.Properties is not { Count: > 0 })
                     continue;
@@ -276,8 +279,7 @@ sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext
                         continue;
 
                     var concretePropSchema = propSchema.EnsureSchemaForMutation(
-                        sharedCtx,
-                        operationKey,
+                        mutationCtx,
                         $"{schemaKey}.{propKey}",
                         localized => descriptionTarget.Properties![propKey] = localized);
 
@@ -287,14 +289,13 @@ sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext
             }
         }
 
-        OpenApiSchema? EnsureLocalArrayItemSchema(OpenApiSchema? schema, string operationKey, string schemaKey)
+        static OpenApiSchema? EnsureLocalArrayItemSchema(OpenApiSchema? schema, OperationSchemaMutationContext mutationCtx, string schemaKey)
         {
             if (schema?.Type?.HasFlag(JsonSchemaType.Array) != true)
                 return null;
 
             return schema.Items.EnsureSchemaForMutation(
-                sharedCtx,
-                operationKey,
+                mutationCtx,
                 $"{schemaKey}.items",
                 localized => schema.Items = localized,
                 cloneConcreteSchema: true);

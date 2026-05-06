@@ -74,10 +74,28 @@ static partial class OperationSchemaHelpers
                 schemaKey,
                 localized => mediaType.Schema = localized,
                 cloneConcreteSchema: true);
+
+        internal OpenApiSchema? EnsureOperationLocalSchemaForMutation(OperationSchemaMutationContext mutationCtx, string schemaKey)
+            => mediaType.Schema.EnsureSchemaForMutation(
+                mutationCtx,
+                schemaKey,
+                localized => mediaType.Schema = localized,
+                cloneConcreteSchema: true);
     }
 
     extension(IOpenApiSchema? schema)
     {
+        internal OpenApiSchema? EnsureSchemaForMutation(OperationSchemaMutationContext mutationCtx,
+                                                        string schemaKey,
+                                                        Action<IOpenApiSchema> replace,
+                                                        bool cloneConcreteSchema = false)
+            => schema.EnsureSchemaForMutation(
+                mutationCtx.SharedContext,
+                mutationCtx.OperationKey,
+                schemaKey,
+                replace,
+                cloneConcreteSchema);
+
         internal OpenApiSchema? EnsureSchemaForMutation(SharedContext sharedCtx,
                                                         string operationKey,
                                                         string schemaKey,
@@ -314,3 +332,5 @@ static partial class OperationSchemaHelpers
     static string? GetReferenceId(OpenApiSchemaReference schemaRef)
         => schemaRef.Reference.Id ?? schemaRef.Id;
 }
+
+readonly record struct OperationSchemaMutationContext(SharedContext SharedContext, string OperationKey);
