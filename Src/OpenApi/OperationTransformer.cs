@@ -1,7 +1,5 @@
-using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.OpenApi;
@@ -10,35 +8,10 @@ namespace FastEndpoints.OpenApi;
 
 sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext sharedCtx) : IOpenApiOperationTransformer
 {
-    const BindingFlags PublicInstanceHierarchy = BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy;
-    static readonly ConcurrentDictionary<Type, TypeMetadata> _typeMetadataCache = new();
-    static readonly ConcurrentDictionary<PropertyInfo, PropertyMetadata> _propertyMetadataCache = new();
-    static readonly ConcurrentDictionary<PropertyInfo, bool> _nullablePropertyCache = new();
     readonly ValidationSchemaTransformer _validationTransformer = new(docOpts, sharedCtx);
     readonly OperationMetadataTransformer _metadataTransformer = new(docOpts, sharedCtx);
     readonly RequestOperationTransformer _requestTransformer = new(docOpts, sharedCtx);
     readonly ResponseOperationTransformer _responseTransformer = new(docOpts, sharedCtx);
-
-    internal sealed class TypeMetadata
-    {
-        public required PropertyInfo[] PublicInstanceProperties { get; init; }
-        public required PropertyInfo[] BindableRequestProperties { get; init; }
-    }
-
-    internal sealed class PropertyMetadata
-    {
-        public required bool HasPublicGetter { get; init; }
-        public required bool HasPublicSetter { get; init; }
-        public required bool IsJsonIgnoredAlways { get; init; }
-        public required bool IsHiddenFromDocs { get; init; }
-        public required bool IsDontInject { get; init; }
-        public required bool IsFromQuery { get; init; }
-        public required BindFromAttribute? BindFrom { get; init; }
-        public required FromHeaderAttribute? FromHeader { get; init; }
-        public required FromCookieAttribute? FromCookie { get; init; }
-        public required ToHeaderAttribute? ToHeader { get; init; }
-        public required System.ComponentModel.DefaultValueAttribute? DefaultValue { get; init; }
-    }
 
     internal sealed class RouteParameterInfo
     {
@@ -156,13 +129,13 @@ sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext
     }
 
     internal static PropertyInfo[] GetPublicInstanceProperties(Type type)
-        => GetTypeMetadata(type).PublicInstanceProperties;
+        => OperationReflectionCache.GetTypeMetadata(type).PublicInstanceProperties;
 
     internal static PropertyInfo[] GetBindableRequestProperties(Type type)
-        => GetTypeMetadata(type).BindableRequestProperties;
+        => OperationReflectionCache.GetTypeMetadata(type).BindableRequestProperties;
 
-    internal static PropertyMetadata GetPropertyMetadata(PropertyInfo property)
-        => _propertyMetadataCache.GetOrAdd(property, CreatePropertyMetadata);
+    internal static OperationReflectionCache.PropertyMetadata GetPropertyMetadata(PropertyInfo property)
+        => OperationReflectionCache.GetPropertyMetadata(property);
 
     static string CreateOperationKey(string httpMethod, string documentPath)
         => $"{httpMethod}:{documentPath}";
@@ -191,49 +164,8 @@ sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext
             IsFastEndpoint = true
         };
 
-    internal static TypeMetadata GetTypeMetadata(Type type)
-    {
-        type = Nullable.GetUnderlyingType(type) ?? type;
-
-        return _typeMetadataCache.GetOrAdd(type, CreateTypeMetadata);
-    }
-
-    static TypeMetadata CreateTypeMetadata(Type type)
-    {
-        var properties = type.GetProperties(PublicInstanceHierarchy);
-
-        return new()
-        {
-            PublicInstanceProperties = properties,
-            BindableRequestProperties = properties.Where(IsBindableRequestProperty).ToArray()
-        };
-    }
-
-    static PropertyMetadata CreatePropertyMetadata(PropertyInfo property)
-        => new()
-        {
-            HasPublicGetter = property.GetGetMethod()?.IsPublic is true,
-            HasPublicSetter = property.GetSetMethod()?.IsPublic is true,
-            IsJsonIgnoredAlways = property.GetCustomAttribute<JsonIgnoreAttribute>()?.Condition == JsonIgnoreCondition.Always,
-            IsHiddenFromDocs = property.IsDefined(Types.HideFromDocsAttribute),
-            IsDontInject = property.IsDefined(Types.DontInjectAttribute),
-            IsFromQuery = property.IsDefined(typeof(FromQueryAttribute), false),
-            BindFrom = property.GetCustomAttribute<BindFromAttribute>(),
-            FromHeader = property.GetCustomAttribute<FromHeaderAttribute>(),
-            FromCookie = property.GetCustomAttribute<FromCookieAttribute>(),
-            ToHeader = property.GetCustomAttribute<ToHeaderAttribute>(),
-            DefaultValue = property.GetCustomAttribute<System.ComponentModel.DefaultValueAttribute>()
-        };
-
-    static bool IsBindableRequestProperty(PropertyInfo property)
-    {
-        var metadata = GetPropertyMetadata(property);
-
-        return metadata is { HasPublicSetter: true, HasPublicGetter: true, IsJsonIgnoredAlways: false, IsDontInject: false };
-    }
-
     internal static bool IsNullable(PropertyInfo prop)
-        => _nullablePropertyCache.GetOrAdd(prop, static property => new NullabilityInfoContext().Create(property).WriteState is NullabilityState.Nullable);
+        => OperationReflectionCache.IsNullable(prop);
 
     internal static Type GetRequestDtoType(EndpointDefinition epDef)
         => epDef.ReqDtoType;

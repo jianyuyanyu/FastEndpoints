@@ -402,7 +402,7 @@ sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext
 
             Dictionary<string, string>? jsonNameMap = null;
 
-            foreach (var property in GetTypeMetadata(type).PublicInstanceProperties)
+            foreach (var property in OperationReflectionCache.GetTypeMetadata(type).PublicInstanceProperties)
             {
                 var jsonName = PropertyNameResolver.GetSchemaPropertyName(property, namingPolicy, usePropertyNamingPolicy);
                 jsonNameMap ??= [];
