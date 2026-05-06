@@ -140,9 +140,16 @@ sealed partial class ValidationSchemaTransformer
             if (property is null)
                 return;
 
+            var hasNestedObjectRules = HasRulesWithPrefix(rulesDict, $"{fullPropertyName}.");
+            var hasNestedArrayRules = HasRulesWithPrefix(rulesDict, $"{fullPropertyName}[].");
+
+            if (!hasNestedObjectRules && !hasNestedArrayRules)
+                return;
+
             var propertySchema = ResolveForMutation(property, _localizeReferencedSchemas, cloned => schema.Properties![propertyName] = cloned);
 
-            if (propertySchema is not null &&
+            if (hasNestedObjectRules &&
+                propertySchema is not null &&
                 propertySchema.Properties is { Count: > 0 } &&
                 propertySchema != schema)
             {
@@ -151,11 +158,15 @@ sealed partial class ValidationSchemaTransformer
                 return;
             }
 
-            if (propertySchema is { Type: { } type } &&
+            if (hasNestedArrayRules &&
+                propertySchema is { Type: { } type } &&
                 type.HasFlag(JsonSchemaType.Array) &&
                 ResolveForMutation(propertySchema.Items, _localizeReferencedSchemas, cloned => propertySchema.Items = cloned) is { Properties.Count: > 0 } itemsSchema)
                 ApplyRulesToSchema(itemsSchema, rulesDict, $"{fullPropertyName}[].", activeChildValidators);
         }
+
+        static bool HasRulesWithPrefix(ReadOnlyDictionary<string, List<IValidationRule>> rulesDict, string prefix)
+            => rulesDict.Keys.Any(key => key.StartsWith(prefix, StringComparison.Ordinal));
 
         void TryApplyRootValidation(OpenApiSchema schema,
                                     ReadOnlyDictionary<string, List<IValidationRule>> rulesDict,

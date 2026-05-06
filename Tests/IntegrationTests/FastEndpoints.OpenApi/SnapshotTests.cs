@@ -5,7 +5,6 @@ public class SnapshotTests(Fixture App) : TestBase<Fixture>
     //NOTE: matching against verified json files in the project root vs latest generated json.
     //      to update the golden master (verified json files), just set '_updateSnapshots = true' and run the tests.
     //      don't forget to 'false' afterward. because if you don't you're always comparing against newly generated output.
-
     static readonly bool _updateSnapshots = false;
 
     [Fact]
@@ -103,5 +102,4 @@ public class SnapshotTests(Fixture App) : TestBase<Fixture>
 
         return true;
     }
-
 }
