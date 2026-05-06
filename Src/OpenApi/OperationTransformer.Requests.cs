@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -28,6 +29,7 @@ sealed partial class OperationTransformer
             "Authorization"
         };
 
+        static readonly ConcurrentDictionary<Type, PromotedBodyPropertySelection> _promotedBodyPropertyCache = new();
         static readonly ParameterLookupKeyComparer _parameterLookupKeyComparer = new();
 
         JsonNamingPolicy? NamingPolicy => sharedCtx.NamingPolicy;
@@ -129,7 +131,10 @@ sealed partial class OperationTransformer
             return promoted ? new(schemaKey, promoteProp.PropertyType) : null;
         }
 
-        static (PropertyInfo? Promoted, PropertyInfo? FromBody, PropertyInfo? FromForm) FindPromotedBodyProperty(Type requestDtoType)
+        static PromotedBodyPropertySelection FindPromotedBodyProperty(Type requestDtoType)
+            => _promotedBodyPropertyCache.GetOrAdd(requestDtoType, CreatePromotedBodyPropertySelection);
+
+        static PromotedBodyPropertySelection CreatePromotedBodyPropertySelection(Type requestDtoType)
         {
             PropertyInfo? fromBodyProp = null;
             PropertyInfo? fromFormProp = null;
@@ -146,8 +151,10 @@ sealed partial class OperationTransformer
                     break;
             }
 
-            return (fromBodyProp ?? fromFormProp, fromBodyProp, fromFormProp);
+            return new(fromBodyProp ?? fromFormProp, fromBodyProp, fromFormProp);
         }
+
+        readonly record struct PromotedBodyPropertySelection(PropertyInfo? Promoted, PropertyInfo? FromBody, PropertyInfo? FromForm);
 
         static void NormalizePromotedFormRequestBodyContent(OpenApiOperation operation, string? formDataContentType)
         {
