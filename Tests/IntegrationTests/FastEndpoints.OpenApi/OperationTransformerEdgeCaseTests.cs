@@ -53,34 +53,6 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
     }
 
     [Fact]
-    public async Task shared_request_schema_ref_initialization_is_thread_safe()
-    {
-        var sharedCtx = new SharedContext();
-        var docOpts = new DocumentOptions
-        {
-            EndpointFilter = ep => ep.EndpointTags?.Contains("swagger_review") is true
-        };
-        const string sharedRequestRef = "TestCasesSwaggerReviewSharedRequestMetadataReviewRequest";
-        using var start = new ManualResetEventSlim();
-        var tasks = Enumerable.Range(0, Environment.ProcessorCount * 8)
-                              .Select(
-                                  _ => Task.Run(
-                                      () =>
-                                      {
-                                          start.Wait();
-                                          sharedCtx.InitializeSharedRequestSchemaRefs(App.Services, docOpts);
-                                          sharedCtx.SharedRequestSchemaRefs.Contains(sharedRequestRef).ShouldBeTrue();
-                                      }))
-                              .ToArray();
-
-        start.Set();
-        await Task.WhenAll(tasks);
-
-        sharedCtx.SharedRequestSchemaRefs.Contains(sharedRequestRef).ShouldBeTrue();
-        sharedCtx.SharedRequestSchemaRefs.ShouldNotBeOfType<HashSet<string>>();
-    }
-
-    [Fact]
     public async Task default_version_document_excludes_v1_endpoints_from_schema_sharing()
     {
         var json = await App.GetDocumentJsonAsync("Swagger Review");

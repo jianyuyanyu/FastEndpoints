@@ -64,16 +64,6 @@ static partial class OperationSchemaHelpers
             return cloned;
         }
 
-        internal OpenApiSchema? EnsureOperationLocalSchemaIfShared(SharedContext sharedCtx)
-        {
-            if (mediaType.Schema is not OpenApiSchemaReference schemaRef ||
-                GetReferenceId(schemaRef) is not { } refId ||
-                !sharedCtx.SharedRequestSchemaRefs.Contains(refId))
-                return mediaType.Schema.ResolveSchema();
-
-            return mediaType.EnsureOperationLocalSchema();
-        }
-
         internal OpenApiSchema? EnsureOperationLocalSchemaForMutation()
             => mediaType.EnsureOperationLocalSchema();
 
