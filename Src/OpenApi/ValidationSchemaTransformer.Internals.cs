@@ -79,7 +79,7 @@ sealed partial class ValidationSchemaTransformer
 
         public void ApplyValidatorRules(OpenApiSchema schema, CachedValidatorRules cachedRules, string propertyPrefix, HashSet<Type> activeChildValidators)
         {
-            ApplyRulesToSchema(schema, cachedRules.Rules, propertyPrefix, activeChildValidators);
+            ApplyRulesToSchema(schema, new(cachedRules.Rules), propertyPrefix, activeChildValidators);
 
             foreach (var includedRules in cachedRules.IncludedRules)
                 ApplyValidatorRules(schema, includedRules, propertyPrefix, activeChildValidators);
@@ -88,7 +88,7 @@ sealed partial class ValidationSchemaTransformer
         void ApplyValidator(OpenApiSchema schema, IValidator validator, string propertyPrefix, HashSet<Type> activeChildValidators)
         {
             var rulesDict = validator.GetDictionaryOfRules(_sharedCtx.NamingPolicy, _usePropertyNamingPolicy, GetValidatorTargetType(validator));
-            ApplyRulesToSchema(schema, rulesDict, propertyPrefix, activeChildValidators);
+            ApplyRulesToSchema(schema, new(rulesDict), propertyPrefix, activeChildValidators);
             _childResolver.ApplyRulesFromIncludedValidators(schema, validator, propertyPrefix, activeChildValidators, _sharedCtx.NamingPolicy, []);
         }
 
@@ -96,26 +96,26 @@ sealed partial class ValidationSchemaTransformer
         public static IEnumerable<IValidator> GetIncludedValidators(IValidator validator, ILogger<ValidationSchemaTransformer>? logger)
             => ChildValidatorResolver.GetIncludedValidators(validator, logger);
 
-        void ApplyRulesToSchema(OpenApiSchema? schema, ReadOnlyDictionary<string, List<IValidationRule>> rulesDict, string propertyPrefix, HashSet<Type> activeChildValidators)
+        void ApplyRulesToSchema(OpenApiSchema? schema, ValidationRuleLookup rules, string propertyPrefix, HashSet<Type> activeChildValidators)
         {
             if (schema is null)
                 return;
 
-            TryApplyRootValidation(schema, rulesDict, propertyPrefix, activeChildValidators);
+            TryApplyRootValidation(schema, rules, propertyPrefix, activeChildValidators);
 
             if (schema.Properties is not null)
             {
                 foreach (var (propertyName, propertySchema) in schema.Properties.ToArray())
-                    TryApplyValidation(schema, rulesDict, propertyName, propertySchema, propertyPrefix, activeChildValidators);
+                    TryApplyValidation(schema, rules, propertyName, propertySchema, propertyPrefix, activeChildValidators);
             }
 
-            RecurseComposite(schema.AllOf, rulesDict, propertyPrefix, activeChildValidators);
-            RecurseComposite(schema.OneOf, rulesDict, propertyPrefix, activeChildValidators);
-            RecurseComposite(schema.AnyOf, rulesDict, propertyPrefix, activeChildValidators);
+            RecurseComposite(schema.AllOf, rules, propertyPrefix, activeChildValidators);
+            RecurseComposite(schema.OneOf, rules, propertyPrefix, activeChildValidators);
+            RecurseComposite(schema.AnyOf, rules, propertyPrefix, activeChildValidators);
         }
 
         void RecurseComposite(IList<IOpenApiSchema>? composite,
-                              ReadOnlyDictionary<string, List<IValidationRule>> rulesDict,
+                              ValidationRuleLookup rules,
                               string propertyPrefix,
                               HashSet<Type> activeChildValidators)
         {
@@ -133,12 +133,12 @@ sealed partial class ValidationSchemaTransformer
                     localized => composite[i] = localized);
 
                 if (resolved?.Properties is { Count: > 0 })
-                    ApplyRulesToSchema(resolved, rulesDict, propertyPrefix, activeChildValidators);
+                    ApplyRulesToSchema(resolved, rules, propertyPrefix, activeChildValidators);
             }
         }
 
         void TryApplyValidation(OpenApiSchema schema,
-                                ReadOnlyDictionary<string, List<IValidationRule>> rulesDict,
+                                ValidationRuleLookup rules,
                                 string propertyName,
                                 IOpenApiSchema? property,
                                 string parameterPrefix,
@@ -146,7 +146,7 @@ sealed partial class ValidationSchemaTransformer
         {
             var fullPropertyName = $"{parameterPrefix}{propertyName}";
 
-            if (rulesDict.TryGetValue(fullPropertyName, out var validationRules))
+            if (rules.TryGetValue(fullPropertyName, out var validationRules))
             {
                 var localizedPropertySchema = property is null
                                                   ? null
@@ -165,8 +165,8 @@ sealed partial class ValidationSchemaTransformer
             if (property is null)
                 return;
 
-            var hasNestedObjectRules = HasRulesWithPrefix(rulesDict, $"{fullPropertyName}.");
-            var hasNestedArrayRules = HasRulesWithPrefix(rulesDict, $"{fullPropertyName}[].");
+            var hasNestedObjectRules = rules.HasPrefix($"{fullPropertyName}.");
+            var hasNestedArrayRules = rules.HasPrefix($"{fullPropertyName}[].");
 
             if (!hasNestedObjectRules && !hasNestedArrayRules)
                 return;
@@ -184,7 +184,7 @@ sealed partial class ValidationSchemaTransformer
                 propertySchema.Properties is { Count: > 0 } &&
                 propertySchema != schema)
             {
-                ApplyRulesToSchema(propertySchema, rulesDict, $"{fullPropertyName}.", activeChildValidators);
+                ApplyRulesToSchema(propertySchema, rules, $"{fullPropertyName}.", activeChildValidators);
 
                 return;
             }
@@ -199,19 +199,16 @@ sealed partial class ValidationSchemaTransformer
                     _operationKey,
                     $"{_schemaKey}.{fullPropertyName}[]",
                     localized => propertySchema.Items = localized) is { Properties.Count: > 0 } itemsSchema)
-                ApplyRulesToSchema(itemsSchema, rulesDict, $"{fullPropertyName}[].", activeChildValidators);
+                ApplyRulesToSchema(itemsSchema, rules, $"{fullPropertyName}[].", activeChildValidators);
         }
 
-        static bool HasRulesWithPrefix(ReadOnlyDictionary<string, List<IValidationRule>> rulesDict, string prefix)
-            => rulesDict.Keys.Any(key => key.StartsWith(prefix, StringComparison.Ordinal));
-
         void TryApplyRootValidation(OpenApiSchema schema,
-                                    ReadOnlyDictionary<string, List<IValidationRule>> rulesDict,
+                                    ValidationRuleLookup rules,
                                     string propertyPrefix,
                                     HashSet<Type> activeChildValidators)
         {
             if (propertyPrefix.Length == 0 ||
-                !rulesDict.TryGetValue(propertyPrefix.TrimEnd('.'), out var validationRules))
+                !rules.TryGetValue(propertyPrefix.TrimEnd('.'), out var validationRules))
                 return;
 
             foreach (var validationRule in validationRules)
@@ -259,6 +256,34 @@ sealed partial class ValidationSchemaTransformer
                 }
             }
         }
+
+        internal readonly struct ValidationRuleLookup(ReadOnlyDictionary<string, List<IValidationRule>> rules)
+        {
+            readonly HashSet<string> _prefixes = BuildPrefixes(rules.Keys);
+
+            public bool TryGetValue(string propertyName, [NotNullWhen(true)] out List<IValidationRule>? validationRules)
+                => rules.TryGetValue(propertyName, out validationRules);
+
+            public bool HasPrefix(string prefix)
+                => _prefixes.Contains(prefix);
+
+            static HashSet<string> BuildPrefixes(IEnumerable<string> ruleNames)
+            {
+                var prefixes = new HashSet<string>(StringComparer.Ordinal);
+
+                foreach (var ruleName in ruleNames)
+                {
+                    for (var separatorIndex = ruleName.IndexOf('.');
+                         separatorIndex >= 0;
+                         separatorIndex = ruleName.IndexOf('.', separatorIndex + 1))
+                    {
+                        prefixes.Add(ruleName[..(separatorIndex + 1)]);
+                    }
+                }
+
+                return prefixes;
+            }
+        }
     }
 
     sealed class ChildValidatorResolver(IServiceResolver serviceResolver,
@@ -266,7 +291,7 @@ sealed partial class ValidationSchemaTransformer
                                         ILogger<ValidationSchemaTransformer>? logger,
                                         Func<IServiceScope> createScope,
                                         Action<OpenApiSchema, IValidator, string, HashSet<Type>> applyValidator,
-                                        Action<OpenApiSchema?, ReadOnlyDictionary<string, List<IValidationRule>>, string, HashSet<Type>> applyRulesToSchema,
+                                        Action<OpenApiSchema?, ValidationSchemaApplier.ValidationRuleLookup, string, HashSet<Type>> applyRulesToSchema,
                                         bool usePropertyNamingPolicy,
                                         string operationKey,
                                         string schemaKey,
@@ -325,7 +350,7 @@ sealed partial class ValidationSchemaTransformer
                         continue;
 
                     var rulesDict = includeValidator.GetDictionaryOfRules(namingPolicy, usePropertyNamingPolicy, GetValidatorTargetType(includeValidator));
-                    applyRulesToSchema(schema, rulesDict, propertyPrefix, activeChildValidators);
+                    applyRulesToSchema(schema, new(rulesDict), propertyPrefix, activeChildValidators);
                     ApplyRulesFromIncludedValidators(schema, includeValidator, propertyPrefix, activeChildValidators, namingPolicy, activeIncludedValidators);
                 }
             }
