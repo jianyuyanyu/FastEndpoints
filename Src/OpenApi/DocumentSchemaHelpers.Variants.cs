@@ -164,7 +164,7 @@ static partial class DocumentSchemaHelpers
     }
 
     static void RewriteSchemaRefs(OpenApiDocument document, Dictionary<string, string> aliases)
-        => OpenApiSchemaGraphRewriter.RewriteDocumentSchemas(document, schema => RewriteSchemaRef(schema, aliases));
+        => OpenApiSchemaGraphTransformer.TransformDocumentSchemas(document, schema => RewriteSchemaRef(schema, aliases));
 
     static IOpenApiSchema? RewriteSchemaRef(IOpenApiSchema? schema, Dictionary<string, string> aliases)
     {

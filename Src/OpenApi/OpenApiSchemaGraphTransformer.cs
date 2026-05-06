@@ -2,14 +2,14 @@ using Microsoft.OpenApi;
 
 namespace FastEndpoints.OpenApi;
 
-static class OpenApiSchemaGraphRewriter
+static class OpenApiSchemaGraphTransformer
 {
-    internal static void RewriteDocumentSchemas(OpenApiDocument document, Func<IOpenApiSchema?, IOpenApiSchema?> rewrite)
+    internal static void TransformDocumentSchemas(OpenApiDocument document, Func<IOpenApiSchema?, IOpenApiSchema?> transform)
     {
         if (document.Paths is { Count: > 0 })
         {
             foreach (var pathItem in document.Paths.Values)
-                RewritePathItemSchemas(pathItem, rewrite);
+                RewritePathItemSchemas(pathItem, transform);
         }
 
         if (document.Components is not { } components)
@@ -18,43 +18,43 @@ static class OpenApiSchemaGraphRewriter
         if (components.Schemas is { Count: > 0 })
         {
             foreach (var (key, schema) in components.Schemas.ToArray())
-                components.Schemas[key] = RewriteSchema(schema, rewrite)!;
+                components.Schemas[key] = RewriteSchema(schema, transform)!;
         }
 
         if (components.Responses is { Count: > 0 })
         {
             foreach (var response in components.Responses.Values)
-                RewriteResponseSchemas(response, rewrite);
+                RewriteResponseSchemas(response, transform);
         }
 
         if (components.Parameters is { Count: > 0 })
         {
             foreach (var parameter in components.Parameters.Values)
-                RewriteParameterSchemas(parameter, rewrite);
+                RewriteParameterSchemas(parameter, transform);
         }
 
         if (components.RequestBodies is { Count: > 0 })
         {
             foreach (var requestBody in components.RequestBodies.Values)
-                RewriteRequestBodySchemas(requestBody, rewrite);
+                RewriteRequestBodySchemas(requestBody, transform);
         }
 
         if (components.Headers is { Count: > 0 })
         {
             foreach (var header in components.Headers.Values)
-                RewriteHeaderSchemas(header, rewrite);
+                RewriteHeaderSchemas(header, transform);
         }
 
         if (components.Callbacks is { Count: > 0 })
         {
             foreach (var callback in components.Callbacks.Values)
-                RewriteCallbackSchemas(callback, rewrite);
+                RewriteCallbackSchemas(callback, transform);
         }
 
         if (components.PathItems is { Count: > 0 })
         {
             foreach (var pathItem in components.PathItems.Values)
-                RewritePathItemSchemas(pathItem, rewrite);
+                RewritePathItemSchemas(pathItem, transform);
         }
     }
 
