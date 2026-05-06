@@ -39,7 +39,7 @@ sealed partial class ValidationSchemaTransformer(DocumentOptions docOpts, Shared
         }
     }
 
-    public void ApplyEndpointValidation(OpenApiOperation operation, IServiceProvider services, Type? validatorType, string? propertyPrefix = null)
+    public void ApplyEndpointValidation(OpenApiOperation operation, IServiceProvider services, Type? validatorType, string operationKey, string? propertyPrefix = null)
     {
         if (validatorType is null || operation.RequestBody?.Content is not { Count: > 0 })
             return;
@@ -61,12 +61,14 @@ sealed partial class ValidationSchemaTransformer(DocumentOptions docOpts, Shared
             _serviceResolver.CreateScope,
             ValidationRuleCatalog.DefaultRules,
             docOpts.UsePropertyNamingPolicy,
+            operationKey,
+            "requestBody",
             localizeReferencedSchemas: true);
         var formattedPropertyPrefix = FormatPropertyPrefix(propertyPrefix);
 
         foreach (var content in operation.RequestBody.Content.Values)
         {
-            var schema = content.EnsureOperationLocalSchemaIfShared(sharedCtx);
+            var schema = content.EnsureOperationLocalSchemaForMutation(sharedCtx, operationKey, "requestBody");
 
             if (schema is not null)
                 schemaApplier.ApplyValidatorRules(schema, cachedRules, formattedPropertyPrefix, []);

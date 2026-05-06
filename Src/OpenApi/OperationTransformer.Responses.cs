@@ -50,7 +50,7 @@ sealed partial class OperationTransformer
             }
         }
 
-        public void ApplyDescriptions(OpenApiOperation operation, EndpointDefinition epDef, OpenApiOperationTransformerContext context)
+        public void ApplyDescriptions(OpenApiOperation operation, EndpointDefinition epDef, OpenApiOperationTransformerContext context, string operationKey)
         {
             if (operation.Responses is null)
                 return;
@@ -70,12 +70,12 @@ sealed partial class OperationTransformer
                         response.Description = customDesc;
 
                     if (epDef.EndpointSummary.ResponseParams.TryGetValue(code, out var propDescriptions))
-                        ApplyParamDescriptions(response, propDescriptions, responseTypes?.GetValueOrDefault(code));
+                        ApplyParamDescriptions(response, propDescriptions, responseTypes?.GetValueOrDefault(code), operationKey, $"response.{statusCode}");
                 }
             }
         }
 
-        public void FixBinaryFormats(OpenApiOperation operation)
+        public void FixBinaryFormats(OpenApiOperation operation, string operationKey)
         {
             if (operation.Responses is null)
                 return;
@@ -91,7 +91,16 @@ sealed partial class OperationTransformer
                     if (contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    if (mediaType.Schema is OpenApiSchema { Type: JsonSchemaType.String, Format: "byte" } schema)
+                    if (mediaType.Schema.ResolveSchema(sharedCtx) is not { Type: JsonSchemaType.String, Format: "byte" })
+                        continue;
+
+                    var schema = mediaType.Schema.EnsureSchemaForMutation(
+                        sharedCtx,
+                        operationKey,
+                        $"response.{contentType}.binary",
+                        localized => mediaType.Schema = localized);
+
+                    if (schema is not null)
                         schema.Format = "binary";
                 }
             }
@@ -198,7 +207,7 @@ sealed partial class OperationTransformer
             return responseTypeMetas;
         }
 
-        public void FixPolymorphism(OpenApiOperation operation)
+        public void FixPolymorphism(OpenApiOperation operation, string operationKey)
         {
             if (operation.Responses is null)
                 return;
@@ -213,7 +222,7 @@ sealed partial class OperationTransformer
                     if (mediaType.Schema is null)
                         continue;
 
-                    if (mediaType.Schema.ResolveSchemaOrReference() is not OpenApiSchema actualSchema)
+                    if (mediaType.Schema.ResolveSchemaOrReference(sharedCtx) is not OpenApiSchema actualSchema)
                         continue;
 
                     if (actualSchema.Discriminator?.Mapping is not { Count: > 0 } ||
@@ -224,7 +233,11 @@ sealed partial class OperationTransformer
                     if (mediaType.Schema.OneOf is { Count: > 0 })
                         continue;
 
-                    if (mediaType.Schema is not OpenApiSchema responseSchema)
+                    if (mediaType.Schema.EnsureSchemaForMutation(
+                            sharedCtx,
+                            operationKey,
+                            "response.polymorphism",
+                            localized => mediaType.Schema = localized) is not OpenApiSchema responseSchema)
                         continue;
 
                     responseSchema.OneOf ??= [];
@@ -237,7 +250,9 @@ sealed partial class OperationTransformer
 
         void ApplyParamDescriptions(IOpenApiResponse response,
                                     Dictionary<string, string> propDescriptions,
-                                    Type? responseDtoType)
+                                    Type? responseDtoType,
+                                    string operationKey,
+                                    string schemaKey)
         {
             if (response is not OpenApiResponse concreteResp || concreteResp.Content is not { Count: > 0 })
                 return;
@@ -248,8 +263,8 @@ sealed partial class OperationTransformer
 
             foreach (var content in concreteResp.Content.Values)
             {
-                var schema = content.EnsureOperationLocalSchemaForMutation();
-                var descriptionTarget = collectionElementType is null ? schema : EnsureLocalArrayItemSchema(schema);
+                var schema = content.EnsureOperationLocalSchemaForMutation(sharedCtx, operationKey, schemaKey);
+                var descriptionTarget = collectionElementType is null ? schema : EnsureLocalArrayItemSchema(schema, operationKey, schemaKey);
 
                 if (descriptionTarget?.Properties is not { Count: > 0 })
                     continue;
@@ -258,23 +273,32 @@ sealed partial class OperationTransformer
                 {
                     var propName = jsonNameToClrName?.TryGetValue(propKey, out var clrName) == true ? clrName : propKey;
 
-                    if (propDescriptions.TryGetValue(propName, out var responseDescription) && propSchema is OpenApiSchema concretePropSchema)
+                    if (!propDescriptions.TryGetValue(propName, out var responseDescription))
+                        continue;
+
+                    var concretePropSchema = propSchema.EnsureSchemaForMutation(
+                        sharedCtx,
+                        operationKey,
+                        $"{schemaKey}.{propKey}",
+                        localized => descriptionTarget.Properties![propKey] = localized);
+
+                    if (concretePropSchema is not null)
                         concretePropSchema.Description = responseDescription;
                 }
             }
         }
 
-        static OpenApiSchema? EnsureLocalArrayItemSchema(OpenApiSchema? schema)
+        OpenApiSchema? EnsureLocalArrayItemSchema(OpenApiSchema? schema, string operationKey, string schemaKey)
         {
             if (schema?.Type?.HasFlag(JsonSchemaType.Array) != true)
                 return null;
 
-            var itemSchema = schema.Items.CloneAsConcreteSchema();
-
-            if (itemSchema is not null)
-                schema.Items = itemSchema;
-
-            return itemSchema;
+            return schema.Items.EnsureSchemaForMutation(
+                sharedCtx,
+                operationKey,
+                $"{schemaKey}.items",
+                localized => schema.Items = localized,
+                cloneConcreteSchema: true);
         }
 
         static Dictionary<int, Type?> BuildSupportedResponseTypeMap(OpenApiOperationTransformerContext context)

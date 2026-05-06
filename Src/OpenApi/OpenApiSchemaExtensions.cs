@@ -21,12 +21,26 @@ static partial class OperationSchemaHelpers
                 _ => null
             };
 
+        internal OpenApiSchema? ResolveSchema(SharedContext sharedCtx)
+            => schema switch
+            {
+                OpenApiSchemaReference schemaRef when GetReferenceId(schemaRef) is { } refId && sharedCtx.TryGetOperationSchemaVariant(refId, out var variant) => variant,
+                _ => schema.ResolveSchema()
+            };
+
         internal IOpenApiSchema? ResolveSchemaOrReference()
             => schema switch
             {
                 OpenApiSchemaReference schemaRef => ResolveSchemaReference(schemaRef),
                 OpenApiSchema concreteSchema => concreteSchema,
                 _ => null
+            };
+
+        internal IOpenApiSchema? ResolveSchemaOrReference(SharedContext sharedCtx)
+            => schema switch
+            {
+                OpenApiSchemaReference schemaRef when GetReferenceId(schemaRef) is { } refId && sharedCtx.TryGetOperationSchemaVariant(refId, out var variant) => variant,
+                _ => schema.ResolveSchemaOrReference()
             };
 
         internal OpenApiSchema? CloneAsConcreteSchema()
@@ -62,6 +76,54 @@ static partial class OperationSchemaHelpers
 
         internal OpenApiSchema? EnsureOperationLocalSchemaForMutation()
             => mediaType.EnsureOperationLocalSchema();
+
+        internal OpenApiSchema? EnsureOperationLocalSchemaForMutation(SharedContext sharedCtx, string operationKey, string schemaKey)
+            => mediaType.Schema.EnsureSchemaForMutation(
+                sharedCtx,
+                operationKey,
+                schemaKey,
+                localized => mediaType.Schema = localized,
+                cloneConcreteSchema: true);
+    }
+
+    extension(IOpenApiSchema? schema)
+    {
+        internal OpenApiSchema? EnsureSchemaForMutation(SharedContext sharedCtx,
+                                                        string operationKey,
+                                                        string schemaKey,
+                                                        Action<IOpenApiSchema> replace,
+                                                        bool cloneConcreteSchema = false)
+        {
+            switch (schema)
+            {
+                case OpenApiSchemaReference schemaRef when GetReferenceId(schemaRef) is { } refId:
+                {
+                    if (sharedCtx.TryGetOperationSchemaVariant(refId, out var existingVariant))
+                        return existingVariant;
+
+                    var cloned = schemaRef.CloneAsConcreteSchema();
+
+                    if (cloned is null)
+                        return null;
+
+                    var variant = sharedCtx.GetOrAddOperationSchemaVariant(refId, operationKey, schemaKey, cloned);
+                    replace(new OpenApiSchemaReference(variant.RefId));
+
+                    return variant.Schema;
+                }
+                case OpenApiSchema concreteSchema when cloneConcreteSchema:
+                {
+                    var cloned = CloneConcreteSchema(concreteSchema);
+                    replace(cloned);
+
+                    return cloned;
+                }
+                case OpenApiSchema concreteSchema:
+                    return concreteSchema;
+                default:
+                    return null;
+            }
+        }
     }
 
     static OpenApiSchema CloneConcreteSchema(IOpenApiSchema schema)

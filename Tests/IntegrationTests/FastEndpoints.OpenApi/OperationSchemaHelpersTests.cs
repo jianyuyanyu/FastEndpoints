@@ -441,6 +441,103 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     }
 
     [Fact]
+    public void unreferenced_schema_removal_keeps_schemas_referenced_by_extended_schema_members()
+    {
+        var document = new OpenApiDocument
+        {
+            Paths = new()
+            {
+                ["/extended"] = new OpenApiPathItem
+                {
+                    Operations = new()
+                    {
+                        [HttpMethod.Post] = new()
+                        {
+                            RequestBody = new OpenApiRequestBody
+                            {
+                                Content = new Dictionary<string, OpenApiMediaType>
+                                {
+                                    ["application/json"] = new()
+                                    {
+                                        Schema = new OpenApiSchemaReference("Root")
+                                    }
+                                }
+                            },
+                            Responses = new()
+                            {
+                                ["200"] = new OpenApiResponse()
+                            }
+                        }
+                    }
+                }
+            },
+            Components = new()
+            {
+                Schemas = new Dictionary<string, IOpenApiSchema>
+                {
+                    ["Root"] = new OpenApiSchema
+                    {
+                        Type = JsonSchemaType.Object,
+                        Not = new OpenApiSchemaReference("NotModel"),
+                        PatternProperties = new Dictionary<string, IOpenApiSchema>
+                        {
+                            ["^item"] = new OpenApiSchemaReference("PatternModel")
+                        },
+                        Definitions = new Dictionary<string, IOpenApiSchema>
+                        {
+                            ["child"] = new OpenApiSchemaReference("DefinitionModel")
+                        }
+                    },
+                    ["NotModel"] = new OpenApiSchema { Type = JsonSchemaType.Object },
+                    ["PatternModel"] = new OpenApiSchema { Type = JsonSchemaType.Object },
+                    ["DefinitionModel"] = new OpenApiSchema { Type = JsonSchemaType.Object },
+                    ["UnusedModel"] = new OpenApiSchema { Type = JsonSchemaType.Object }
+                }
+            }
+        };
+
+        document.RemoveUnreferencedSchemas();
+
+        document.Components.Schemas.ContainsKey("Root").ShouldBeTrue();
+        document.Components.Schemas.ContainsKey("NotModel").ShouldBeTrue();
+        document.Components.Schemas.ContainsKey("PatternModel").ShouldBeTrue();
+        document.Components.Schemas.ContainsKey("DefinitionModel").ShouldBeTrue();
+        document.Components.Schemas.ContainsKey("UnusedModel").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void unreferenced_schema_removal_runs_when_document_has_no_paths()
+    {
+        var document = new OpenApiDocument
+        {
+            Components = new()
+            {
+                Schemas = new Dictionary<string, IOpenApiSchema>
+                {
+                    ["KeptModel"] = new OpenApiSchema { Type = JsonSchemaType.Object },
+                    ["UnusedModel"] = new OpenApiSchema { Type = JsonSchemaType.Object }
+                },
+                RequestBodies = new Dictionary<string, IOpenApiRequestBody>
+                {
+                    ["ReusableRequest"] = new OpenApiRequestBody
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new() { Schema = new OpenApiSchemaReference("KeptModel") }
+                        }
+                    }
+                }
+            },
+            Paths = new()
+        };
+
+        document.RemoveUnreferencedSchemas();
+
+        document.Components.Schemas.ContainsKey("KeptModel").ShouldBeTrue();
+        document.Components.Schemas.ContainsKey("UnusedModel").ShouldBeFalse();
+    }
+
+    [Fact]
     public void request_body_property_removal_does_not_apply_naming_policy_when_disabled()
     {
         var operation = new OpenApiOperation
@@ -471,6 +568,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
         operation.RemovePropFromRequestBody(
             prop,
             new(),
+            "GET:/test",
             new() { UsePropertyNamingPolicy = false },
             JsonNamingPolicy.CamelCase,
             removedProps);
@@ -564,12 +662,13 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
             }
         };
 
-        ApplyResponseParamDescriptions(
+        var sharedCtx = ApplyResponseParamDescriptions(
             response,
             typeof(ResponseParamDescriptionResponse),
             new() { ["name"] = "operation-specific" });
 
-        var operationSchema = response.Content!["application/json"].Schema.ShouldBeOfType<OpenApiSchema>();
+        var operationSchemaRef = response.Content!["application/json"].Schema.ShouldBeOfType<OpenApiSchemaReference>();
+        var operationSchema = sharedCtx.OperationSchemaVariants[operationSchemaRef.Reference.Id!];
 
         operationSchema.Properties!["name"].ShouldBeOfType<OpenApiSchema>().Description.ShouldBe("operation-specific");
         componentSchema.Properties!["name"].ShouldBeOfType<OpenApiSchema>().Description.ShouldBeNull();
@@ -612,7 +711,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
             }
         };
 
-        ApplyResponseParamDescriptions(
+        var sharedCtx = ApplyResponseParamDescriptions(
             response,
             typeof(List<ResponseParamDescriptionCollectionItem>),
             new()
@@ -623,7 +722,8 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
             JsonNamingPolicy.CamelCase);
 
         var arraySchema = response.Content!["application/json"].Schema.ShouldBeOfType<OpenApiSchema>();
-        var itemSchema = arraySchema.Items.ShouldBeOfType<OpenApiSchema>();
+        var itemSchemaRef = arraySchema.Items.ShouldBeOfType<OpenApiSchemaReference>();
+        var itemSchema = sharedCtx.OperationSchemaVariants[itemSchemaRef.Reference.Id!];
 
         itemSchema.ShouldNotBeSameAs(componentSchema);
         itemSchema.Properties!["displayName"].ShouldBeOfType<OpenApiSchema>().Description.ShouldBe("item display name");
@@ -1032,7 +1132,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
             culture: null)!;
 
         transformerType.GetMethod("ApplyBodyOverrides", BindingFlags.Instance | BindingFlags.Public)!
-                       .Invoke(transformer, [operation, epDef]);
+                       .Invoke(transformer, [operation, epDef, "GET:/test"]);
     }
 
     static OpenApiOperation CreateFormPromotionOperation()
@@ -1164,7 +1264,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
             culture: null)!;
 
         transformerType.GetMethod("FixBinaryFormats", BindingFlags.Instance | BindingFlags.Public)!
-                       .Invoke(transformer, [operation]);
+                       .Invoke(transformer, [operation, "GET:/test"]);
     }
 
     static void UpdateParameterSchema(OpenApiOperation operation, string name, Type type, SharedContext sharedCtx)
@@ -1176,10 +1276,10 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
                        .Invoke(null, [operation, ParameterLocation.Path, name, type, sharedCtx, false]);
     }
 
-    static void ApplyResponseParamDescriptions(OpenApiResponse response,
-                                               Type responseType,
-                                               Dictionary<string, string> descriptions,
-                                               JsonNamingPolicy? namingPolicy = null)
+    static SharedContext ApplyResponseParamDescriptions(OpenApiResponse response,
+                                                        Type responseType,
+                                                        Dictionary<string, string> descriptions,
+                                                        JsonNamingPolicy? namingPolicy = null)
     {
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
                                                                       .GetType("FastEndpoints.OpenApi.OperationTransformer+ResponseOperationTransformer", throwOnError: true)!;
@@ -1192,7 +1292,9 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
             culture: null)!;
 
         transformerType.GetMethod("ApplyParamDescriptions", BindingFlags.Instance | BindingFlags.NonPublic)!
-                       .Invoke(transformer, [response, descriptions, responseType]);
+                       .Invoke(transformer, [response, descriptions, responseType, "GET:/test", "response.200"]);
+
+        return sharedCtx;
     }
 
     sealed class EmptyServiceProvider : IServiceProvider

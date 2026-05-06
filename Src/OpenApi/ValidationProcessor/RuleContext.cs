@@ -8,9 +8,15 @@ using Microsoft.OpenApi;
 namespace FastEndpoints.OpenApi.ValidationProcessor;
 
 [HideFromDocs]
-public class RuleContext(OpenApiSchema schema, string propertyKey, IPropertyValidator propertyValidator, bool hasCondition)
+public class RuleContext(OpenApiSchema schema,
+                         string propertyKey,
+                         IPropertyValidator propertyValidator,
+                         bool hasCondition,
+                         OpenApiSchema? propertySchema = null)
 {
     public OpenApiSchema Schema { get; } = schema;
+
+    readonly OpenApiSchema? _propertySchema = propertySchema;
 
     public string PropertyKey { get; } = propertyKey;
 
@@ -23,6 +29,13 @@ public class RuleContext(OpenApiSchema schema, string propertyKey, IPropertyVali
     /// </summary>
     public bool TryGetPropertySchema(out OpenApiSchema propertySchema)
     {
+        if (_propertySchema is not null)
+        {
+            propertySchema = _propertySchema;
+
+            return true;
+        }
+
         if (Schema.Properties?.TryGetValue(PropertyKey, out var p) == true && p.ResolveSchema() is { } s)
         {
             propertySchema = s;

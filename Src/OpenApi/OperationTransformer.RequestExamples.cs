@@ -137,7 +137,7 @@ sealed partial class OperationTransformer
 
             foreach (var key in example.Select(kvp => kvp.Key).ToArray())
             {
-                if (!propertyKeys.TryGetValue(key, out var schemaKey) || properties[schemaKey].ResolveSchema() is not { } propertySchema)
+                if (!propertyKeys.TryGetValue(key, out var schemaKey) || properties[schemaKey].ResolveSchema(sharedCtx) is not { } propertySchema)
                     continue;
 
                 string? fallbackKey = null;
@@ -152,7 +152,7 @@ sealed partial class OperationTransformer
 
         JsonArray NormalizeArrayExample(JsonArray example, OpenApiSchema? schema, JsonArray? fallback)
         {
-            var itemSchema = schema?.Items.ResolveSchema();
+            var itemSchema = schema?.Items.ResolveSchema(sharedCtx);
 
             if (itemSchema is null)
                 return example;
@@ -165,7 +165,7 @@ sealed partial class OperationTransformer
             return example;
         }
 
-        static bool AllowsNull(OpenApiSchema? schema)
+        bool AllowsNull(OpenApiSchema? schema)
         {
             if (schema is null)
                 return true;
@@ -173,10 +173,10 @@ sealed partial class OperationTransformer
             if (schema.Type.HasValue && schema.Type.Value.HasFlag(JsonSchemaType.Null))
                 return true;
 
-            if (schema.OneOf?.Any(s => AllowsNull(s.ResolveSchema())) == true)
+            if (schema.OneOf?.Any(s => AllowsNull(s.ResolveSchema(sharedCtx))) == true)
                 return true;
 
-            return schema.AnyOf?.Any(s => AllowsNull(s.ResolveSchema())) == true;
+            return schema.AnyOf?.Any(s => AllowsNull(s.ResolveSchema(sharedCtx))) == true;
         }
 
         JsonNode? CreateSampleFromSchema(OpenApiSchema? schema, string? propertyName = null)
@@ -191,7 +191,7 @@ sealed partial class OperationTransformer
             {
                 foreach (var option in schema.OneOf)
                 {
-                    var resolved = option.ResolveSchema();
+                    var resolved = option.ResolveSchema(sharedCtx);
 
                     if (resolved is not null && !AllowsNull(resolved))
                         return CreateSampleFromSchema(resolved, propertyName);
@@ -202,7 +202,7 @@ sealed partial class OperationTransformer
             {
                 foreach (var option in schema.AnyOf)
                 {
-                    var resolved = option.ResolveSchema();
+                    var resolved = option.ResolveSchema(sharedCtx);
 
                     if (resolved is not null && !AllowsNull(resolved))
                         return CreateSampleFromSchema(resolved, propertyName);
@@ -215,7 +215,7 @@ sealed partial class OperationTransformer
 
                 foreach (var (key, propertySchema) in schema.Properties)
                 {
-                    var sample = CreateSampleFromSchema(propertySchema.ResolveSchema(), key);
+                    var sample = CreateSampleFromSchema(propertySchema.ResolveSchema(sharedCtx), key);
 
                     if (sample is not null)
                         obj[key] = sample;
@@ -224,7 +224,7 @@ sealed partial class OperationTransformer
                 return obj.Count > 0 ? obj : null;
             }
 
-            if (schema.AdditionalProperties.ResolveSchema() is { } additionalPropertiesSchema)
+            if (schema.AdditionalProperties.ResolveSchema(sharedCtx) is { } additionalPropertiesSchema)
             {
                 var sample = CreateSampleFromSchema(additionalPropertiesSchema, "additionalProp1");
 
@@ -235,7 +235,7 @@ sealed partial class OperationTransformer
 
             if (schema.Type?.HasFlag(JsonSchemaType.Array) == true)
             {
-                var itemSample = CreateSampleFromSchema(schema.Items.ResolveSchema(), propertyName);
+                var itemSample = CreateSampleFromSchema(schema.Items.ResolveSchema(sharedCtx), propertyName);
 
                 return itemSample is not null ? new JsonArray(itemSample) : new JsonArray();
             }

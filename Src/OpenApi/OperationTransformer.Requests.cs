@@ -33,7 +33,11 @@ sealed partial class OperationTransformer
         JsonNamingPolicy? NamingPolicy => sharedCtx.NamingPolicy;
         JsonSerializerOptions SerializerOptions => sharedCtx.SerializerOptions ?? Cfg.SerOpts.Options;
 
-        public RequestTransformState HandleParameters(OpenApiOperation operation, OpenApiOperationTransformerContext context, EndpointDefinition epDef, string documentPath)
+        public RequestTransformState HandleParameters(OpenApiOperation operation,
+                                                      OpenApiOperationTransformerContext context,
+                                                      EndpointDefinition epDef,
+                                                      string documentPath,
+                                                      string operationKey)
         {
             var state = new RequestTransformState();
             var endpointRouteTemplate = FindEndpointRouteTemplate(epDef, documentPath);
@@ -54,12 +58,12 @@ sealed partial class OperationTransformer
 
                 if (requestDtoProps is not null)
                 {
-                    RemoveHiddenProperties(operation, requestDtoProps, state);
-                    AddBoundParameters(operation, requestDtoProps, routeParameterLookup, isGetRequest, state);
+                    RemoveHiddenProperties(operation, requestDtoProps, state, operationKey);
+                    AddBoundParameters(operation, requestDtoProps, routeParameterLookup, isGetRequest, state, operationKey);
                 }
 
                 // remove request body if GET request (unless explicitly enabled) or if empty
-                if ((isGetRequest && !docOpts.EnableGetRequestsWithBody) || operation.IsRequestBodyEmpty())
+                if ((isGetRequest && !docOpts.EnableGetRequestsWithBody) || operation.IsRequestBodyEmpty(sharedCtx))
                 {
                     if (!requestDtoIsList)
                         operation.RequestBody = null;
@@ -71,7 +75,7 @@ sealed partial class OperationTransformer
             return state;
         }
 
-        public PromotedBodyProperty? ApplyBodyOverrides(OpenApiOperation operation, EndpointDefinition epDef)
+        public PromotedBodyProperty? ApplyBodyOverrides(OpenApiOperation operation, EndpointDefinition epDef, string operationKey)
         {
             if (operation.RequestBody?.Content is null)
                 return null;
@@ -89,7 +93,7 @@ sealed partial class OperationTransformer
             // replace the entire request body schema with the [FromBody]/[FromForm] property's type schema
             foreach (var content in operation.RequestBody.Content.Values)
             {
-                var resolvedSchema = content.Schema.ResolveSchema();
+                var resolvedSchema = content.Schema.ResolveSchema(sharedCtx);
 
                 if (resolvedSchema is null)
                     continue;
@@ -99,7 +103,7 @@ sealed partial class OperationTransformer
                 if (matchingKey is not null && resolvedSchema.Properties!.TryGetValue(matchingKey, out var propSchema))
                 {
                     content.Schema = propSchema;
-                    content.EnsureOperationLocalSchemaForMutation();
+                    content.EnsureOperationLocalSchemaForMutation(sharedCtx, operationKey, "requestBody");
                     promoted = true;
                 }
             }
@@ -113,12 +117,12 @@ sealed partial class OperationTransformer
             // JSON Patch unwrap: only for [FromBody], promote the operations array to top-level
             if (fromBodyProp is not null && operation.RequestBody.Content.TryGetValue("application/json-patch+json", out var patchContent))
             {
-                var patchArraySchema = TryGetJsonPatchArraySchema(patchContent.Schema);
+                var patchArraySchema = TryGetJsonPatchArraySchema(patchContent.Schema, sharedCtx);
 
                 if (patchArraySchema is not null)
                 {
                     patchContent.Schema = patchArraySchema;
-                    patchContent.EnsureOperationLocalSchemaForMutation();
+                    patchContent.EnsureOperationLocalSchemaForMutation(sharedCtx, operationKey, "requestBody.jsonPatch");
                 }
             }
 
@@ -224,7 +228,7 @@ sealed partial class OperationTransformer
 
             foreach (var content in operation.RequestBody.Content.Values)
             {
-                var schema = content.Schema.ResolveSchema();
+                var schema = content.Schema.ResolveSchema(sharedCtx);
 
                 if (exampleNodes.Count == 1)
                 {
@@ -258,7 +262,8 @@ sealed partial class OperationTransformer
         public void ApplyParamDescriptionsToBodySchema(OpenApiOperation operation,
                                                        EndpointDefinition epDef,
                                                        RequestTransformState state,
-                                                       PromotedBodyProperty? promotedBodyProperty)
+                                                       PromotedBodyProperty? promotedBodyProperty,
+                                                       string operationKey)
         {
             if (operation.RequestBody?.Content is null)
                 return;
@@ -292,21 +297,21 @@ sealed partial class OperationTransformer
 
             foreach (var content in operation.RequestBody.Content.Values)
             {
-                var schema = content.Schema.ResolveSchema();
+                var schema = content.Schema.ResolveSchema(sharedCtx);
 
                 if (schema is null)
                     continue;
 
-                if (hasDefaults)
-                    ApplyDefaultValues(schema, defaultProps);
-
-                if (hasParams || requestExampleNode is not null)
+                if (hasDefaults || hasParams || requestExampleNode is not null)
                 {
-                    schema = content.EnsureOperationLocalSchemaIfShared(sharedCtx);
+                    schema = content.EnsureOperationLocalSchemaForMutation(sharedCtx, operationKey, "requestBody");
 
                     if (schema is null)
                         continue;
                 }
+
+                if (hasDefaults)
+                    ApplyDefaultValues(schema, defaultProps, operationKey);
 
                 if (requestExampleNode is not null)
                 {
@@ -319,16 +324,27 @@ sealed partial class OperationTransformer
 
                 foreach (var (propName, propSchema) in schema.Properties)
                 {
-                    if (propSchema is not OpenApiSchema concreteProp)
+                    string? description = null;
+                    JsonNode? exVal = null;
+                    var hasDescription = paramDescriptionLookup?.TryGetValue(propName, out description) == true;
+                    var hasExample = propExamples?.TryGetValue(propName, out exVal) == true;
+
+                    if (!hasDescription && !hasExample)
                         continue;
 
-                    if (paramDescriptionLookup is not null)
-                    {
-                        if (paramDescriptionLookup.TryGetValue(propName, out var description))
-                            concreteProp.Description = description;
-                    }
+                    var concreteProp = propSchema.EnsureSchemaForMutation(
+                        sharedCtx,
+                        operationKey,
+                        $"requestBody.{propName}",
+                        localized => schema.Properties![propName] = localized);
 
-                    if (propExamples is not null && propExamples.TryGetValue(propName, out var exVal))
+                    if (concreteProp is null)
+                        continue;
+
+                    if (hasDescription)
+                        concreteProp.Description = description;
+
+                    if (hasExample)
                         concreteProp.Example = exVal;
                 }
             }
@@ -355,14 +371,23 @@ sealed partial class OperationTransformer
             return defaults;
         }
 
-        void ApplyDefaultValues(OpenApiSchema schema, Dictionary<string, System.ComponentModel.DefaultValueAttribute> defaultProps)
+        void ApplyDefaultValues(OpenApiSchema schema, Dictionary<string, System.ComponentModel.DefaultValueAttribute> defaultProps, string operationKey)
         {
             if (schema.Properties is null)
                 return;
 
             foreach (var (propName, propSchema) in schema.Properties)
             {
-                if (propSchema is OpenApiSchema { Default: null } concreteProp && defaultProps.TryGetValue(propName, out var defaultAttr))
+                if (!defaultProps.TryGetValue(propName, out var defaultAttr))
+                    continue;
+
+                var concreteProp = propSchema.EnsureSchemaForMutation(
+                    sharedCtx,
+                    operationKey,
+                    $"requestBody.{propName}",
+                    localized => schema.Properties![propName] = localized);
+
+                if (concreteProp is { Default: null })
                     concreteProp.Default = defaultAttr.Value.JsonNodeFromObject(SerializerOptions);
             }
         }
@@ -475,7 +500,7 @@ sealed partial class OperationTransformer
             return lookup;
         }
 
-        void RemoveHiddenProperties(OpenApiOperation operation, List<PropertyInfo> requestDtoProps, RequestTransformState state)
+        void RemoveHiddenProperties(OpenApiOperation operation, List<PropertyInfo> requestDtoProps, RequestTransformState state, string operationKey)
         {
             for (var i = requestDtoProps.Count - 1; i >= 0; i--)
             {
@@ -487,7 +512,7 @@ sealed partial class OperationTransformer
                     continue;
 
                 requestDtoProps.RemoveAt(i);
-                operation.RemovePropFromRequestBody(p, sharedCtx, docOpts, NamingPolicy, state.PropsRemovedFromBody);
+                operation.RemovePropFromRequestBody(p, sharedCtx, operationKey, docOpts, NamingPolicy, state.PropsRemovedFromBody);
             }
         }
 
@@ -505,21 +530,22 @@ sealed partial class OperationTransformer
                                 List<PropertyInfo> requestDtoProps,
                                 Dictionary<string, RouteParameterInfo> routeParameters,
                                 bool isGetRequest,
-                                RequestTransformState state)
+                                RequestTransformState state,
+                                string operationKey)
         {
             for (var i = 0; i < requestDtoProps.Count; i++)
             {
                 var p = requestDtoProps[i];
                 var attributes = p.GetCustomAttributes().ToArray();
 
-                AddAttributeParameters(operation, p, attributes, state);
-                AddRouteParameter(operation, p, routeParameters, state);
+                AddAttributeParameters(operation, p, attributes, state, operationKey);
+                AddRouteParameter(operation, p, routeParameters, state, operationKey);
 
                 var queryParamName = GetQueryParameterName(p);
 
                 if (ShouldAddQueryParam(p, attributes, operation, queryParamName, isGetRequest && !docOpts.EnableGetRequestsWithBody))
                 {
-                    operation.RemovePropFromRequestBody(p, sharedCtx, docOpts, NamingPolicy, state.PropsRemovedFromBody);
+                    operation.RemovePropFromRequestBody(p, sharedCtx, operationKey, docOpts, NamingPolicy, state.PropsRemovedFromBody);
 
                     if (TryAddComplexFromQueryParameters(operation, p, docOpts.ShortSchemaNames))
                         continue;
@@ -598,7 +624,7 @@ sealed partial class OperationTransformer
         static bool? GetDontBindRequiredness(PropertyInfo property)
             => property.GetCustomAttribute<DontBindAttribute>()?.IsRequired is true ? true : null;
 
-        void AddAttributeParameters(OpenApiOperation operation, PropertyInfo p, Attribute[] attributes, RequestTransformState state)
+        void AddAttributeParameters(OpenApiOperation operation, PropertyInfo p, Attribute[] attributes, RequestTransformState state, string operationKey)
         {
             foreach (var attribute in attributes)
             {
@@ -610,7 +636,7 @@ sealed partial class OperationTransformer
 
                         if (IsIllegalHeaderName(pName))
                         {
-                            operation.RemovePropFromRequestBody(p, sharedCtx, docOpts, NamingPolicy, state.PropsRemovedFromBody);
+                            operation.RemovePropFromRequestBody(p, sharedCtx, operationKey, docOpts, NamingPolicy, state.PropsRemovedFromBody);
 
                             continue;
                         }
@@ -618,7 +644,7 @@ sealed partial class OperationTransformer
                         AddParameter(operation, pName, ParameterLocation.Header, p, hAttrib.IsRequired, docOpts.ShortSchemaNames);
 
                         if (hAttrib.IsRequired || hAttrib.RemoveFromSchema)
-                            operation.RemovePropFromRequestBody(p, sharedCtx, docOpts, NamingPolicy, state.PropsRemovedFromBody);
+                            operation.RemovePropFromRequestBody(p, sharedCtx, operationKey, docOpts, NamingPolicy, state.PropsRemovedFromBody);
 
                         break;
                     }
@@ -629,28 +655,28 @@ sealed partial class OperationTransformer
                         AddParameter(operation, pName, ParameterLocation.Cookie, p, cAttrib.IsRequired, docOpts.ShortSchemaNames);
 
                         if (cAttrib.IsRequired || cAttrib.RemoveFromSchema)
-                            operation.RemovePropFromRequestBody(p, sharedCtx, docOpts, NamingPolicy, state.PropsRemovedFromBody);
+                            operation.RemovePropFromRequestBody(p, sharedCtx, operationKey, docOpts, NamingPolicy, state.PropsRemovedFromBody);
 
                         break;
                     }
 
                     case FromClaimAttribute cAttrib when cAttrib.IsRequired || cAttrib.RemoveFromSchema:
                     case HasPermissionAttribute pAttrib when pAttrib.IsRequired || pAttrib.RemoveFromSchema:
-                        operation.RemovePropFromRequestBody(p, sharedCtx, docOpts, NamingPolicy, state.PropsRemovedFromBody);
+                        operation.RemovePropFromRequestBody(p, sharedCtx, operationKey, docOpts, NamingPolicy, state.PropsRemovedFromBody);
 
                         break;
                 }
             }
         }
 
-        void AddRouteParameter(OpenApiOperation operation, PropertyInfo p, Dictionary<string, RouteParameterInfo> routeParameters, RequestTransformState state)
+        void AddRouteParameter(OpenApiOperation operation, PropertyInfo p, Dictionary<string, RouteParameterInfo> routeParameters, RequestTransformState state, string operationKey)
         {
             var bindName = p.GetCustomAttribute<BindFromAttribute>()?.Name ?? p.Name;
 
             if (!routeParameters.TryGetValue(bindName, out var matchingRouteParam))
                 return;
 
-            operation.RemovePropFromRequestBody(p, sharedCtx, docOpts, NamingPolicy, state.PropsRemovedFromBody);
+            operation.RemovePropFromRequestBody(p, sharedCtx, operationKey, docOpts, NamingPolicy, state.PropsRemovedFromBody);
 
             var appliedName = matchingRouteParam.Name.GetOpenApiRouteParameterName(docOpts, NamingPolicy);
 
@@ -829,9 +855,9 @@ sealed partial class OperationTransformer
                    OperationSchemaHelpers.TryGetDictionaryValueType(type) is not null;
         }
 
-        static OpenApiSchema? TryGetJsonPatchArraySchema(IOpenApiSchema? schema)
+        static OpenApiSchema? TryGetJsonPatchArraySchema(IOpenApiSchema? schema, SharedContext sharedCtx)
         {
-            var resolved = schema.ResolveSchema();
+            var resolved = schema.ResolveSchema(sharedCtx);
 
             if (resolved is not { Type: JsonSchemaType.Object, Properties.Count: 1 })
                 return null;
@@ -840,7 +866,7 @@ sealed partial class OperationTransformer
                                          .FirstOrDefault(p => string.Equals(p.Key, "operations", StringComparison.OrdinalIgnoreCase))
                                          .Value;
 
-            return operationsProp.ResolveSchema() is { Type: JsonSchemaType.Array } arraySchema
+            return operationsProp.ResolveSchema(sharedCtx) is { Type: JsonSchemaType.Array } arraySchema
                        ? arraySchema
                        : null;
         }

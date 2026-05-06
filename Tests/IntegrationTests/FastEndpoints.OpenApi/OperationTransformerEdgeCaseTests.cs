@@ -39,14 +39,12 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
     {
         var json = await App.GetDocumentJsonAsync("Swagger Review");
         var doc = JToken.Parse(json);
-        var alphaSchema = doc["paths"]!["/api/swagger-review/shared-request-metadata-alpha"]!["post"]!
-            ["requestBody"]!["content"]!["application/json"]!["schema"]!;
-        var betaSchema = doc["paths"]!["/api/swagger-review/shared-request-metadata-beta"]!["post"]!
-            ["requestBody"]!["content"]!["application/json"]!["schema"]!;
+        var alphaSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/shared-request-metadata-alpha"]!["post"]!
+            ["requestBody"]!["content"]!["application/json"]!["schema"]!);
+        var betaSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/shared-request-metadata-beta"]!["post"]!
+            ["requestBody"]!["content"]!["application/json"]!["schema"]!);
         var componentSchema = doc["components"]!["schemas"]!["TestCasesSwaggerReviewSharedRequestMetadataReviewRequest"];
 
-        alphaSchema["$ref"].ShouldBeNull();
-        betaSchema["$ref"].ShouldBeNull();
         alphaSchema["example"]!["name"]!.Value<string>().ShouldBe("alpha example");
         betaSchema["example"]!["name"]!.Value<string>().ShouldBe("beta example");
         alphaSchema["properties"]!["name"]!["description"]!.Value<string>().ShouldBe("alpha description");
@@ -90,7 +88,7 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
         var initialSchema = doc["paths"]!["/api/swagger-review/version-prefilter-initial"]!["post"]!
             ["requestBody"]!["content"]!["application/json"]!["schema"]!;
 
-        initialSchema["$ref"]!.Value<string>().ShouldBe("#/components/schemas/TestCasesSwaggerReviewVersionPrefilterSharedRequest");
+        initialSchema["$ref"]!.Value<string>().ShouldStartWith("#/components/schemas/TestCasesSwaggerReviewVersionPrefilterSharedRequest__op");
         initialSchema["properties"].ShouldBeNull();
         doc["paths"]!["/api/swagger-review/version-prefilter-v1"].ShouldBeNull();
     }
@@ -198,7 +196,9 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
     public async Task default_value_attributes_are_applied_to_request_schema_properties()
     {
         var json = await App.GetDocumentJsonAsync("Swagger Review");
-        var requestSchema = JToken.Parse(json)["components"]!["schemas"]!["TestCasesSwaggerReviewDefaultValueSchemaReviewRequest"]!;
+        var doc = JToken.Parse(json);
+        var requestSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/default-value-schema"]!["post"]!
+            ["requestBody"]!["content"]!["application/json"]!["schema"]!);
 
         requestSchema["properties"]!["name"]!["default"]!.Value<string>().ShouldBe("schema-default");
         requestSchema["properties"]!["count"]!["default"]!.Value<int>().ShouldBe(7);
@@ -250,15 +250,16 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
     {
         var json = await App.GetDocumentJsonAsync("Swagger Review");
         var doc = JToken.Parse(json);
-        var requestSchema = doc["paths"]!["/api/swagger-review/promoted-body-validation/{id}"]!["post"]!
-            ["requestBody"]!["content"]!["application/json"]!["schema"]!;
+        var requestSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/promoted-body-validation/{id}"]!["post"]!
+            ["requestBody"]!["content"]!["application/json"]!["schema"]!);
         var schema = requestSchema;
 
         schema["properties"]!["body"].ShouldBeNull();
         schema["properties"]!["name"]!["minLength"]!.Value<int>().ShouldBe(3);
         schema["required"]!.Values<string>().ShouldContain("name");
-        schema["properties"]!["child"]!["properties"]!["code"]!["minLength"]!.Value<int>().ShouldBe(2);
-        schema["properties"]!["child"]!["required"]!.Values<string>().ShouldContain("code");
+        var childSchema = ResolveSchema(doc, schema["properties"]!["child"]!);
+        childSchema["properties"]!["code"]!["minLength"]!.Value<int>().ShouldBe(2);
+        childSchema["required"]!.Values<string>().ShouldContain("code");
     }
 
     [Fact]
@@ -301,7 +302,8 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
     {
         var json = await App.GetDocumentJsonAsync("Swagger Review");
         var doc = JToken.Parse(json);
-        var requestSchema = doc["components"]!["schemas"]!["TestCasesSwaggerReviewHiddenSchemaReviewRequest"]!;
+        var requestSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/hidden-schema"]!["post"]!
+            ["requestBody"]!["content"]!["application/json"]!["schema"]!);
         var responseSchema = doc["components"]!["schemas"]!["TestCasesSwaggerReviewHiddenSchemaReviewResponse"]!;
 
         requestSchema["properties"]!["visibleValue"].ShouldNotBeNull();
@@ -319,7 +321,7 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
 
         var schema = operation["requestBody"]!["content"]!["application/json"]!["schema"]!;
 
-        schema["$ref"].ShouldBeNull();
+        schema = ResolveSchema(JToken.Parse(json), schema);
         schema["properties"]!["id"].ShouldNotBeNull();
         schema["properties"]!["name"].ShouldNotBeNull();
         schema["properties"]!["price"].ShouldNotBeNull();
@@ -350,6 +352,7 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
         // MS OpenApi generates a proper JsonPatchDocument<T> schema using the framework's built-in type
         // instead of NSwag's incorrect type:object. see accepted differences in the port review.
         var schema = content["application/json-patch+json"]!["schema"]!;
+        schema = ResolveSchema(JToken.Parse(json), schema);
         schema["type"]!.Value<string>().ShouldBe("array");
         schema["items"]!["oneOf"]!.ShouldNotBeNull();
     }
@@ -489,10 +492,12 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
     {
         var json = await App.GetDocumentJsonAsync("Swagger Review");
         var doc = JToken.Parse(json);
-        var requestSchema = doc["components"]!["schemas"]!["TestCasesSwaggerReviewChildValidatorReviewRequest"]!;
+        var requestSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/child-validator"]!["post"]!
+            ["requestBody"]!["content"]!["application/json"]!["schema"]!);
         var childSchema = doc["components"]!["schemas"]!["TestCasesSwaggerReviewChildValidatorReviewChild"]!;
 
-        requestSchema["properties"]!["child"]!["properties"]!["score"]!["exclusiveMinimum"]!.Value<int>().ShouldBe(10);
+        var requestChildSchema = ResolveSchema(doc, requestSchema["properties"]!["child"]!);
+        requestChildSchema["properties"]!["score"]!["exclusiveMinimum"]!.Value<int>().ShouldBe(10);
         childSchema.ShouldBeNull();
     }
 
@@ -501,10 +506,13 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
     {
         var json = await App.GetDocumentJsonAsync("Swagger Review");
         var doc = JToken.Parse(json);
-        var requestSchema = doc["components"]!["schemas"]!["TestCasesSwaggerReviewDeepNestedValidatorReviewRequest"]!;
+        var requestSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/deep-nested-validator"]!["post"]!
+            ["requestBody"]!["content"]!["application/json"]!["schema"]!);
         var grandChildSchema = doc["components"]!["schemas"]!["TestCasesSwaggerReviewDeepNestedValidatorReviewGrandChild"]!;
 
-        requestSchema["properties"]!["child"]!["properties"]!["subChild"]!["properties"]!["field"]!["minLength"]!.Value<int>().ShouldBe(5);
+        var childSchema = ResolveSchema(doc, requestSchema["properties"]!["child"]!);
+        var subChildSchema = ResolveSchema(doc, childSchema["properties"]!["subChild"]!);
+        subChildSchema["properties"]!["field"]!["minLength"]!.Value<int>().ShouldBe(5);
         grandChildSchema.ShouldBeNull();
     }
 
@@ -513,12 +521,13 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
     {
         var json = await App.GetDocumentJsonAsync("Swagger Review");
         var doc = JToken.Parse(json);
-        var alphaRequest = doc["components"]!["schemas"]!["TestCasesSwaggerReviewSharedNestedValidationAlphaRequest"]!;
+        var alphaRequest = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/shared-nested-validation-alpha"]!["post"]!
+            ["requestBody"]!["content"]!["application/json"]!["schema"]!);
         var betaRequest = doc["components"]!["schemas"]!["TestCasesSwaggerReviewSharedNestedValidationBetaRequest"]!;
         var addressComponent = doc["components"]!["schemas"]!["TestCasesSwaggerReviewSharedNestedValidationAddress"]!;
 
-        alphaRequest["properties"]!["address"]!["$ref"].ShouldBeNull();
-        alphaRequest["properties"]!["address"]!["required"]!.Values<string>().ShouldContain("zip");
+        var alphaAddress = ResolveSchema(doc, alphaRequest["properties"]!["address"]!);
+        alphaAddress["required"]!.Values<string>().ShouldContain("zip");
         betaRequest["properties"]!["address"]!["$ref"]!.Value<string>()
                                                        .ShouldBe("#/components/schemas/TestCasesSwaggerReviewSharedNestedValidationAddress");
         addressComponent["required"].ShouldBeNull();
@@ -528,7 +537,9 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
     public async Task validator_rules_are_applied_through_intermediate_non_generic_base_type()
     {
         var json = await App.GetDocumentJsonAsync("Swagger Review");
-        var requestSchema = JToken.Parse(json)["components"]!["schemas"]!["TestCasesSwaggerReviewIntermediateBaseValidatorReviewRequest"]!;
+        var doc = JToken.Parse(json);
+        var requestSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/intermediate-base-validator"]!["post"]!
+            ["requestBody"]!["content"]!["application/json"]!["schema"]!);
 
         requestSchema["properties"]!["name"]!["minLength"]!.Value<int>().ShouldBe(3);
     }
@@ -537,7 +548,9 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
     public async Task included_validator_rules_are_applied_to_schema_properties()
     {
         var json = await App.GetDocumentJsonAsync("Initial Release");
-        var requestSchema = JToken.Parse(json)["components"]!["schemas"]!["TestCasesIncludedValidatorTestRequest"]!;
+        var doc = JToken.Parse(json);
+        var requestSchema = ResolveSchema(doc, doc["paths"]!["/api/test-cases/included-validator"]!["post"]!
+            ["requestBody"]!["content"]!["application/json"]!["schema"]!);
 
         requestSchema["required"]!.Values<string>().ShouldContain("id");
         requestSchema["properties"]!["id"]!["exclusiveMinimum"]!.Value<string>().ShouldBe("5");
@@ -762,5 +775,17 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
         routedParams.ShouldContain(p => p.Name == "cID" && p.Location == "path");
         routedParams.ShouldContain(p => p.Name == "sourceID" && p.Location == "path");
         routedParams.ShouldNotContain(p => p.Name == "refererID");
+    }
+
+    static JToken ResolveSchema(JToken document, JToken schema)
+    {
+        var refValue = schema["$ref"]?.Value<string>();
+
+        if (refValue is null)
+            return schema;
+
+        var schemaKey = refValue[(refValue.LastIndexOf('/') + 1)..];
+
+        return document["components"]!["schemas"]![schemaKey]!;
     }
 }

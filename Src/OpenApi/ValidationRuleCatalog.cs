@@ -28,9 +28,8 @@ static class ValidationRuleCatalog
                         if (context.HasCondition)
                             return;
 
-                        var schema = context.Schema;
-                        if (schema.Properties?.TryGetValue(context.PropertyKey, out var p) == true &&
-                            p is OpenApiSchema { Type: not null } prop &&
+                        if (context.TryGetPropertySchema(out var prop) &&
+                            prop.Type is not null &&
                             prop.Type.Value.HasFlag(JsonSchemaType.Null))
                             prop.Type = prop.Type.Value & ~JsonSchemaType.Null;
                     }

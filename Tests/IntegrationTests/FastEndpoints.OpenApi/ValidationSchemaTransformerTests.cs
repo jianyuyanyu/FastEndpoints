@@ -195,6 +195,8 @@ public class ValidationSchemaTransformerTests
                 (Func<IServiceScope>)(() => resolver.CreateScope()),
                 rules,
                 true,
+                "GET:/test",
+                "requestBody",
                 localizeReferencedSchemas
             ],
             culture: null)!;

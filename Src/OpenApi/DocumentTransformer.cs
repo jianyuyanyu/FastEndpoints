@@ -23,7 +23,9 @@ sealed class DocumentTransformer(DocumentOptions opts, SharedContext sharedCtx) 
         DocumentSecurityTransformer.Apply(document, opts, sharedCtx);
         DocumentTagTransformer.Apply(document, opts);
         DocumentSchemaNormalizer.RemoveFrameworkSchemas(document);
+        document.AddOperationSchemaVariants(sharedCtx);
         document.RemoveFormFileSchemas();
+        document.DeduplicateOperationSchemaVariants(sharedCtx);
         DocumentPathNormalizer.Apply(document, opts, sharedCtx);
         await DocumentSchemaNormalizer.Normalize(document, sharedCtx, context, cancellationToken);
         DocumentTagTransformer.Cleanup(document, opts);

@@ -38,8 +38,6 @@ sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext
 
         docOpts.Services ??= context.ApplicationServices;
         sharedCtx.ResolveNamingPolicy();
-        sharedCtx.InitializeSharedRequestSchemaRefs(context.ApplicationServices, docOpts);
-
         // compute the document path for this operation
         var relativePath = context.Description.RelativePath ?? "";
         var documentPath = RouteTemplateHelpers.NormalizePath(relativePath);
@@ -88,13 +86,13 @@ sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext
             operation.Deprecated = true;
 
         // handle request parameters
-        var requestTransformState = _requestTransformer.HandleParameters(operation, context, epDef, documentPath);
+        var requestTransformState = _requestTransformer.HandleParameters(operation, context, epDef, documentPath, operationKey);
 
         // handle [FromBody]/[FromForm] request body replacement + JSON Patch unwrap
-        var promotedBodyPropertyName = _requestTransformer.ApplyBodyOverrides(operation, epDef);
+        var promotedBodyPropertyName = _requestTransformer.ApplyBodyOverrides(operation, epDef, operationKey);
 
         // apply endpoint-scoped validation to request body schemas after request body shape is finalized
-        _validationTransformer.ApplyEndpointValidation(operation, context.ApplicationServices, epDef.ValidatorType, promotedBodyPropertyName?.Name);
+        _validationTransformer.ApplyEndpointValidation(operation, context.ApplicationServices, epDef.ValidatorType, operationKey, promotedBodyPropertyName?.Name);
 
         // apply parameter descriptions from EndpointSummary.Params and defaults from [DefaultValue]
         _requestTransformer.ApplyParameterMetadata(operation, epDef);
@@ -104,10 +102,10 @@ sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext
         _responseTransformer.AddMissingResponses(operation, metadata);
 
         // handle response descriptions
-        _responseTransformer.ApplyDescriptions(operation, epDef, context);
+        _responseTransformer.ApplyDescriptions(operation, epDef, context, operationKey);
 
         // fix binary response formats (MS OpenApi generates "byte" instead of "binary" for raw binary content types)
-        _responseTransformer.FixBinaryFormats(operation);
+        _responseTransformer.FixBinaryFormats(operation, operationKey);
 
         // handle response examples from EndpointSummary
         _responseTransformer.ApplyExamples(operation, epDef, metadata);
@@ -116,14 +114,14 @@ sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext
         _requestTransformer.ApplyExamples(operation, epDef, requestTransformState, promotedBodyPropertyName);
 
         // apply EndpointSummary.Params descriptions to request body schema properties
-        _requestTransformer.ApplyParamDescriptionsToBodySchema(operation, epDef, requestTransformState, promotedBodyPropertyName);
+        _requestTransformer.ApplyParamDescriptionsToBodySchema(operation, epDef, requestTransformState, promotedBodyPropertyName, operationKey);
 
         // handle response headers ([ToHeader] on response DTO + EndpointSummary.ResponseHeaders)
         _responseTransformer.AddHeaders(operation, epDef, metadata);
 
         // fix response polymorphism if enabled
         if (docOpts.UseOneOfForPolymorphism)
-            _responseTransformer.FixPolymorphism(operation);
+            _responseTransformer.FixPolymorphism(operation, operationKey);
 
         // handle idempotency header
         _metadataTransformer.AddIdempotencyHeader(operation, epDef);

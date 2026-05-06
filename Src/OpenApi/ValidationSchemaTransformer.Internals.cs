@@ -20,17 +20,17 @@ sealed partial class ValidationSchemaTransformer
 
     sealed record CachedValidatorRules(ReadOnlyDictionary<string, List<IValidationRule>> Rules, CachedValidatorRules[] IncludedRules);
 
-    static OpenApiSchema? ResolveForMutation(IOpenApiSchema? schema, bool localizeReferencedSchemas, Action<OpenApiSchema> replace)
+    static OpenApiSchema? ResolveForMutation(IOpenApiSchema? schema,
+                                             bool localizeReferencedSchemas,
+                                             SharedContext sharedCtx,
+                                             string operationKey,
+                                             string schemaKey,
+                                             Action<IOpenApiSchema> replace)
     {
         if (!localizeReferencedSchemas || schema is not OpenApiSchemaReference)
             return schema.ResolveSchema();
 
-        var cloned = schema.CloneAsConcreteSchema();
-
-        if (cloned is not null)
-            replace(cloned);
-
-        return cloned;
+        return schema.EnsureSchemaForMutation(sharedCtx, operationKey, schemaKey, replace);
     }
 
     sealed class ValidationSchemaApplier : IDisposable
@@ -41,6 +41,8 @@ sealed partial class ValidationSchemaTransformer
         readonly ChildValidatorResolver _childResolver;
         readonly bool _localizeReferencedSchemas;
         readonly bool _usePropertyNamingPolicy;
+        readonly string _operationKey;
+        readonly string _schemaKey;
 
         public ValidationSchemaApplier(SharedContext sharedCtx,
                                        IServiceResolver serviceResolver,
@@ -48,20 +50,27 @@ sealed partial class ValidationSchemaTransformer
                                        Func<IServiceScope> createScope,
                                        FluentValidationRule[] rules,
                                        bool usePropertyNamingPolicy,
+                                       string operationKey,
+                                       string schemaKey,
                                        bool localizeReferencedSchemas = false)
         {
             _sharedCtx = sharedCtx;
             _logger = logger;
             _rules = rules;
             _usePropertyNamingPolicy = usePropertyNamingPolicy;
+            _operationKey = operationKey;
+            _schemaKey = schemaKey;
             _localizeReferencedSchemas = localizeReferencedSchemas;
             _childResolver = new(
                 serviceResolver,
+                sharedCtx,
                 logger,
                 createScope,
                 ApplyValidator,
                 ApplyRulesToSchema,
                 usePropertyNamingPolicy,
+                operationKey,
+                schemaKey,
                 localizeReferencedSchemas);
         }
 
@@ -115,7 +124,13 @@ sealed partial class ValidationSchemaTransformer
 
             for (var i = 0; i < composite.Count; i++)
             {
-                var resolved = ResolveForMutation(composite[i], _localizeReferencedSchemas, cloned => composite[i] = cloned);
+                var resolved = ResolveForMutation(
+                    composite[i],
+                    _localizeReferencedSchemas,
+                    _sharedCtx,
+                    _operationKey,
+                    $"{_schemaKey}.{propertyPrefix}.composite[{i}]",
+                    localized => composite[i] = localized);
 
                 if (resolved?.Properties is { Count: > 0 })
                     ApplyRulesToSchema(resolved, rulesDict, propertyPrefix, activeChildValidators);
@@ -133,8 +148,18 @@ sealed partial class ValidationSchemaTransformer
 
             if (rulesDict.TryGetValue(fullPropertyName, out var validationRules))
             {
+                var localizedPropertySchema = property is null
+                                                  ? null
+                                                  : ResolveForMutation(
+                                                      property,
+                                                      _localizeReferencedSchemas,
+                                                      _sharedCtx,
+                                                      _operationKey,
+                                                      $"{_schemaKey}.{fullPropertyName}",
+                                                      localized => schema.Properties![propertyName] = localized);
+
                 foreach (var validationRule in validationRules)
-                    ApplyValidationRule(schema, validationRule, propertyName, activeChildValidators);
+                    ApplyValidationRule(schema, validationRule, propertyName, localizedPropertySchema, activeChildValidators);
             }
 
             if (property is null)
@@ -146,7 +171,13 @@ sealed partial class ValidationSchemaTransformer
             if (!hasNestedObjectRules && !hasNestedArrayRules)
                 return;
 
-            var propertySchema = ResolveForMutation(property, _localizeReferencedSchemas, cloned => schema.Properties![propertyName] = cloned);
+            var propertySchema = ResolveForMutation(
+                property,
+                _localizeReferencedSchemas,
+                _sharedCtx,
+                _operationKey,
+                $"{_schemaKey}.{fullPropertyName}",
+                localized => schema.Properties![propertyName] = localized);
 
             if (hasNestedObjectRules &&
                 propertySchema is not null &&
@@ -161,7 +192,13 @@ sealed partial class ValidationSchemaTransformer
             if (hasNestedArrayRules &&
                 propertySchema is { Type: { } type } &&
                 type.HasFlag(JsonSchemaType.Array) &&
-                ResolveForMutation(propertySchema.Items, _localizeReferencedSchemas, cloned => propertySchema.Items = cloned) is { Properties.Count: > 0 } itemsSchema)
+                ResolveForMutation(
+                    propertySchema.Items,
+                    _localizeReferencedSchemas,
+                    _sharedCtx,
+                    _operationKey,
+                    $"{_schemaKey}.{fullPropertyName}[]",
+                    localized => propertySchema.Items = localized) is { Properties.Count: > 0 } itemsSchema)
                 ApplyRulesToSchema(itemsSchema, rulesDict, $"{fullPropertyName}[].", activeChildValidators);
         }
 
@@ -189,7 +226,11 @@ sealed partial class ValidationSchemaTransformer
             }
         }
 
-        void ApplyValidationRule(OpenApiSchema schema, IValidationRule validationRule, string propertyName, HashSet<Type> activeChildValidators)
+        void ApplyValidationRule(OpenApiSchema schema,
+                                 IValidationRule validationRule,
+                                 string propertyName,
+                                 OpenApiSchema? propertySchema,
+                                 HashSet<Type> activeChildValidators)
         {
             foreach (var ruleComponent in validationRule.Components)
             {
@@ -209,7 +250,7 @@ sealed partial class ValidationSchemaTransformer
 
                     try
                     {
-                        rule.Apply(new(schema, propertyName, propertyValidator, ruleComponent.HasCondition()));
+                        rule.Apply(new(schema, propertyName, propertyValidator, ruleComponent.HasCondition(), propertySchema));
                     }
                     catch (Exception ex)
                     {
@@ -221,11 +262,14 @@ sealed partial class ValidationSchemaTransformer
     }
 
     sealed class ChildValidatorResolver(IServiceResolver serviceResolver,
+                                        SharedContext sharedCtx,
                                         ILogger<ValidationSchemaTransformer>? logger,
                                         Func<IServiceScope> createScope,
                                         Action<OpenApiSchema, IValidator, string, HashSet<Type>> applyValidator,
                                         Action<OpenApiSchema?, ReadOnlyDictionary<string, List<IValidationRule>>, string, HashSet<Type>> applyRulesToSchema,
                                         bool usePropertyNamingPolicy,
+                                        string operationKey,
+                                        string schemaKey,
                                         bool localizeReferencedSchemas) : IDisposable
     {
         IServiceScope? _scope;
@@ -329,13 +373,25 @@ sealed partial class ValidationSchemaTransformer
             {
                 if (schema.Properties?.TryGetValue(propertyName, out var childPropSchema) == true)
                 {
-                    var childSchema = ResolveForMutation(childPropSchema, localizeReferencedSchemas, cloned => schema.Properties![propertyName] = cloned);
+                    var childSchema = ResolveForMutation(
+                        childPropSchema,
+                        localizeReferencedSchemas,
+                        sharedCtx,
+                        operationKey,
+                        $"{schemaKey}.{propertyName}",
+                        localized => schema.Properties![propertyName] = localized);
 
                     if (childSchema is not null)
                     {
                         if (childSchema.Type.HasValue &&
                             childSchema.Type.Value.HasFlag(JsonSchemaType.Array) &&
-                            ResolveForMutation(childSchema.Items, localizeReferencedSchemas, cloned => childSchema.Items = cloned) is { } itemsSchema)
+                            ResolveForMutation(
+                                childSchema.Items,
+                                localizeReferencedSchemas,
+                                sharedCtx,
+                                operationKey,
+                                $"{schemaKey}.{propertyName}[]",
+                                localized => childSchema.Items = localized) is { } itemsSchema)
                             applyValidator(itemsSchema, childValidator, string.Empty, activeChildValidators);
                         else
                             applyValidator(childSchema, childValidator, string.Empty, activeChildValidators);
