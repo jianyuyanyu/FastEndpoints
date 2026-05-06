@@ -5,13 +5,12 @@ using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using static FastEndpoints.OpenApi.OperationTransformer;
 
 namespace FastEndpoints.OpenApi;
 
-sealed partial class OperationTransformer
+sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext sharedCtx)
 {
-    sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext sharedCtx)
-    {
         static readonly Dictionary<string, string> _defaultDescriptions = new()
         {
             { "200", "Success" },
@@ -440,5 +439,4 @@ sealed partial class OperationTransformer
                 "500" => description == "Internal Server Error",
                 _ => false
             };
-    }
 }

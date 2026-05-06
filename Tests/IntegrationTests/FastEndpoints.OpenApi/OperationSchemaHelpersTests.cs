@@ -137,7 +137,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
         var epDef = new EndpointDefinition(typeof(object), typeof(object), typeof(object));
         epDef.Summary(s => s.ResponseExamples[200] = new { name = "ok" });
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+ResponseOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.ResponseOperationTransformer", throwOnError: true)!;
         var transformer = Activator.CreateInstance(
             transformerType,
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -737,7 +737,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     {
         var operation = new OpenApiOperation();
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+RequestOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.RequestOperationTransformer", throwOnError: true)!;
         var transformer = Activator.CreateInstance(
             transformerType,
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -953,7 +953,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
         var response = new OpenApiResponse();
         var sharedCtx = new SharedContext();
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+ResponseOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.ResponseOperationTransformer", throwOnError: true)!;
         var transformer = Activator.CreateInstance(
             transformerType,
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -1123,7 +1123,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     static void ApplyBodyOverrides(OpenApiOperation operation, EndpointDefinition epDef)
     {
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+RequestOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.RequestOperationTransformer", throwOnError: true)!;
         var transformer = Activator.CreateInstance(
             transformerType,
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -1182,7 +1182,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     static JsonNode? CreateSchemaSample(OpenApiSchema schema)
     {
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+RequestOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.RequestOperationTransformer", throwOnError: true)!;
         var transformer = Activator.CreateInstance(
             transformerType,
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -1197,7 +1197,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     static JsonNode? NormalizeSchemaExample(JsonNode example, OpenApiSchema schema)
     {
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+RequestOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.RequestOperationTransformer", throwOnError: true)!;
         var transformer = Activator.CreateInstance(
             transformerType,
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -1212,7 +1212,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     static void ValidateRequestDto(Type requestType, bool isCollection)
     {
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+RequestOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.RequestOperationTransformer", throwOnError: true)!;
         var epDef = new EndpointDefinition(typeof(object), requestType, typeof(object));
 
         try
@@ -1229,7 +1229,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     static bool ShouldAddQueryParam(string propertyName, bool isGetRequest)
     {
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+RequestOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.RequestOperationTransformer", throwOnError: true)!;
         var prop = typeof(QueryBindingSourcesRequest).GetProperty(propertyName)!;
         var attributes = prop.GetCustomAttributes().ToArray();
 
@@ -1240,7 +1240,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     static bool AddComplexFromQueryParameters(OpenApiOperation operation, PropertyInfo prop)
     {
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+RequestOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.RequestOperationTransformer", throwOnError: true)!;
         var transformer = Activator.CreateInstance(
             transformerType,
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -1255,7 +1255,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     static void FixBinaryFormats(OpenApiOperation operation)
     {
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+ResponseOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.ResponseOperationTransformer", throwOnError: true)!;
         var transformer = Activator.CreateInstance(
             transformerType,
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -1282,7 +1282,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
                                                         JsonNamingPolicy? namingPolicy = null)
     {
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+ResponseOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.ResponseOperationTransformer", throwOnError: true)!;
         var sharedCtx = new SharedContext { NamingPolicy = namingPolicy };
         var transformer = Activator.CreateInstance(
             transformerType,
@@ -1308,7 +1308,7 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     static void AddParameter(OpenApiOperation operation, string name, ParameterLocation location, PropertyInfo prop, bool? isRequired = null)
     {
         var transformerType = typeof(FastEndpoints.OpenApi.Extensions).Assembly
-                                                                      .GetType("FastEndpoints.OpenApi.OperationTransformer+RequestOperationTransformer", throwOnError: true)!;
+                                                                      .GetType("FastEndpoints.OpenApi.RequestOperationTransformer", throwOnError: true)!;
         var transformer = Activator.CreateInstance(
             transformerType,
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,

@@ -4,13 +4,12 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.OpenApi;
+using static FastEndpoints.OpenApi.OperationTransformer;
 
 namespace FastEndpoints.OpenApi;
 
-sealed partial class OperationTransformer
+sealed partial class OperationMetadataTransformer(DocumentOptions docOpts, SharedContext sharedCtx)
 {
-    sealed partial class OperationMetadataTransformer(DocumentOptions docOpts, SharedContext sharedCtx)
-    {
         static readonly TextInfo _textInfo = CultureInfo.InvariantCulture.TextInfo;
         JsonSerializerOptions SerializerOptions => sharedCtx.SerializerOptions ?? Cfg.SerOpts.Options;
 
@@ -237,5 +236,4 @@ sealed partial class OperationTransformer
 
         [GeneratedRegex("[^a-zA-Z0-9]")]
         private static partial Regex TagSymbolsRegex();
-    }
 }

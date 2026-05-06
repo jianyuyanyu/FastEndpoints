@@ -1,12 +1,11 @@
 using System.Text.Json.Nodes;
 using Microsoft.OpenApi;
+using static FastEndpoints.OpenApi.OperationTransformer;
 
 namespace FastEndpoints.OpenApi;
 
-sealed partial class OperationTransformer
+sealed partial class RequestOperationTransformer
 {
-    sealed partial class RequestOperationTransformer
-    {
         JsonNode? BuildRequestExampleFallback(EndpointDefinition epDef,
                                               HashSet<string> propsRemovedFromBody,
                                               PromotedBodyProperty? promotedBodyProperty)
@@ -262,5 +261,4 @@ sealed partial class OperationTransformer
 
             return false;
         }
-    }
 }

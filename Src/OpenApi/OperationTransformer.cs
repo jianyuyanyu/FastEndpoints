@@ -18,13 +18,13 @@ sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext
     readonly RequestOperationTransformer _requestTransformer = new(docOpts, sharedCtx);
     readonly ResponseOperationTransformer _responseTransformer = new(docOpts, sharedCtx);
 
-    sealed class TypeMetadata
+    internal sealed class TypeMetadata
     {
         public required PropertyInfo[] PublicInstanceProperties { get; init; }
         public required PropertyInfo[] BindableRequestProperties { get; init; }
     }
 
-    sealed class RouteParameterInfo
+    internal sealed class RouteParameterInfo
     {
         public required string Name { get; init; }
         public Type? ConstraintType { get; init; }
@@ -139,10 +139,10 @@ sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext
         return Task.CompletedTask;
     }
 
-    static PropertyInfo[] GetPublicInstanceProperties(Type type)
+    internal static PropertyInfo[] GetPublicInstanceProperties(Type type)
         => GetTypeMetadata(type).PublicInstanceProperties;
 
-    static PropertyInfo[] GetBindableRequestProperties(Type type)
+    internal static PropertyInfo[] GetBindableRequestProperties(Type type)
         => GetTypeMetadata(type).BindableRequestProperties;
 
     static string CreateOperationKey(string httpMethod, string documentPath)
@@ -172,7 +172,7 @@ sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext
             IsFastEndpoint = true
         };
 
-    static TypeMetadata GetTypeMetadata(Type type)
+    internal static TypeMetadata GetTypeMetadata(Type type)
     {
         type = Nullable.GetUnderlyingType(type) ?? type;
 
@@ -196,19 +196,19 @@ sealed partial class OperationTransformer(DocumentOptions docOpts, SharedContext
            property.GetCustomAttribute<JsonIgnoreAttribute>()?.Condition != JsonIgnoreCondition.Always &&
            !property.IsDefined(Types.DontInjectAttribute);
 
-    static bool IsNullable(PropertyInfo prop)
+    internal static bool IsNullable(PropertyInfo prop)
         => _nullablePropertyCache.GetOrAdd(prop, static property => new NullabilityInfoContext().Create(property).WriteState is NullabilityState.Nullable);
 
-    static Type GetRequestDtoType(EndpointDefinition epDef)
+    internal static Type GetRequestDtoType(EndpointDefinition epDef)
         => epDef.ReqDtoType;
 
-    static bool HasParameter(OpenApiOperation operation, ParameterLocation location, string name)
+    internal static bool HasParameter(OpenApiOperation operation, ParameterLocation location, string name)
         => operation.Parameters?.Any(
                p => p.In == location &&
                     string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)) ==
            true;
 
-    static void UpdateParameterSchema(OpenApiOperation operation, ParameterLocation location, string name, Type type, SharedContext sharedCtx, bool shortSchemaNames)
+    internal static void UpdateParameterSchema(OpenApiOperation operation, ParameterLocation location, string name, Type type, SharedContext sharedCtx, bool shortSchemaNames)
     {
         if (operation.Parameters is not { Count: > 0 })
             return;

@@ -6,22 +6,21 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using static FastEndpoints.OpenApi.OperationTransformer;
 
 namespace FastEndpoints.OpenApi;
 
-sealed partial class OperationTransformer
+sealed class RequestTransformState
 {
-    sealed class RequestTransformState
-    {
-        public HashSet<string> PropsRemovedFromBody { get; } = new(StringComparer.OrdinalIgnoreCase);
-        public JsonNode? RequestBodyFallbackExample { get; set; }
-        public bool RequestBodyFallbackExampleCreated { get; set; }
-    }
+    public HashSet<string> PropsRemovedFromBody { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public JsonNode? RequestBodyFallbackExample { get; set; }
+    public bool RequestBodyFallbackExampleCreated { get; set; }
+}
 
-    sealed record PromotedBodyProperty(string Name, Type Type);
+sealed record PromotedBodyProperty(string Name, Type Type);
 
-    sealed partial class RequestOperationTransformer(DocumentOptions docOpts, SharedContext sharedCtx)
-    {
+sealed partial class RequestOperationTransformer(DocumentOptions docOpts, SharedContext sharedCtx)
+{
         static readonly HashSet<string> _illegalHeaderNames = new(StringComparer.OrdinalIgnoreCase)
         {
             "Accept",
@@ -877,5 +876,4 @@ sealed partial class OperationTransformer
                        ? arraySchema
                        : null;
         }
-    }
 }

@@ -53,7 +53,7 @@ sealed partial class OperationTransformer
             routeSegments.RemoveAt(versionIndex);
     }
 
-    static string? FindEndpointRouteTemplate(EndpointDefinition epDef, string documentPath)
+    internal static string? FindEndpointRouteTemplate(EndpointDefinition epDef, string documentPath)
     {
         if (epDef.Routes.Length == 0)
             return null;
@@ -72,7 +72,7 @@ sealed partial class OperationTransformer
         return null;
     }
 
-    static List<RouteParameterInfo> GetRouteParameters(string? relativePath)
+    internal static List<RouteParameterInfo> GetRouteParameters(string? relativePath)
     {
         var segments = RouteTemplateHelpers.GetParameterSegments(relativePath);
         var parameters = new List<RouteParameterInfo>(segments.Count);
