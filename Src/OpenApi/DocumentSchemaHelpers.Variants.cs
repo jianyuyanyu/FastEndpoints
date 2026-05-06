@@ -158,7 +158,7 @@ static partial class DocumentSchemaHelpers
     {
         var refs = new HashSet<string>(StringComparer.Ordinal);
         var pendingRefs = new Queue<string>();
-        CollectSchemaRefs(schema, refs, pendingRefs);
+        OpenApiSchemaReferenceCollector.CollectSchemaRefs(schema, refs, pendingRefs);
 
         return refs.Contains(targetRefId);
     }
