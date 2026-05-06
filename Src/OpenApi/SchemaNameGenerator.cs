@@ -67,6 +67,9 @@ static class SchemaNameGenerator
 
     static string Generate(Type type, bool shortNames)
     {
+        if (type.IsArray)
+            return TypeNameWithoutGenericArgs(type.GetElementType()!, shortNames) + "Array";
+
         var isGeneric = type.IsGenericType;
         var fullNameWithoutGenericArgs =
             isGeneric
@@ -111,26 +114,41 @@ static class SchemaNameGenerator
         }
 
         return sb.ToString();
+    }
 
-        static string TypeNameWithoutGenericArgs(Type type, bool shortNames)
+    static string TypeNameWithoutGenericArgs(Type type, bool shortNames)
+    {
+        if (type.IsArray)
+            return TypeNameWithoutGenericArgs(type.GetElementType()!, shortNames) + "Array";
+
+        if (shortNames)
         {
-            if (shortNames)
-            {
-                var index = type.Name.IndexOf('`');
+            var index = type.Name.IndexOf('`');
 
-                return index == -1 ? type.Name : type.Name[..index];
-            }
-
-            var fullName = type.FullName ?? type.Name;
-            var genericArgIndex = fullName.IndexOf('`');
-            var fullNameWithoutGenericArgs = genericArgIndex == -1 ? fullName : fullName[..genericArgIndex];
-
-            return SanitizeFullName(fullNameWithoutGenericArgs);
+            return index == -1 ? SanitizeFullName(type.Name) : SanitizeFullName(type.Name[..index]);
         }
+
+        var fullName = type.FullName ?? type.Name;
+        var genericArgIndex = fullName.IndexOf('`');
+        var fullNameWithoutGenericArgs = genericArgIndex == -1 ? fullName : fullName[..genericArgIndex];
+
+        return SanitizeFullName(fullNameWithoutGenericArgs);
     }
 
     static string SanitizeFullName(string fullName)
-        => fullName.Replace(".", string.Empty).Replace("+", "_");
+    {
+        var sb = new StringBuilder(fullName.Length);
+
+        foreach (var ch in fullName)
+        {
+            if (char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_')
+                sb.Append(ch);
+            else if (ch == '+')
+                sb.Append('_');
+        }
+
+        return sb.ToString();
+    }
 
     readonly record struct SchemaReferenceIdKey(Type Type, bool ShortSchemaNames);
 }
