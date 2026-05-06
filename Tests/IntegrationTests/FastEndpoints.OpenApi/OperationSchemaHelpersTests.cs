@@ -19,6 +19,126 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
     }
 
     [Fact]
+    public void schema_reference_collector_follows_components_and_nested_schema_members()
+    {
+        var document = new OpenApiDocument
+        {
+            Paths = new()
+            {
+                ["/collector"] = new OpenApiPathItem
+                {
+                    Operations = new()
+                    {
+                        [HttpMethod.Post] = new()
+                        {
+                            RequestBody = new OpenApiRequestBodyReference("ReusableRequest", null),
+                            Responses = new()
+                            {
+                                ["200"] = new OpenApiResponseReference("ReusableResponse", null)
+                            }
+                        }
+                    }
+                }
+            },
+            Components = new()
+            {
+                RequestBodies = new Dictionary<string, IOpenApiRequestBody>
+                {
+                    ["ReusableRequest"] = new OpenApiRequestBody
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new() { Schema = new OpenApiSchemaReference("RequestRoot") }
+                        }
+                    }
+                },
+                Responses = new Dictionary<string, IOpenApiResponse>
+                {
+                    ["ReusableResponse"] = new OpenApiResponse
+                    {
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new() { Schema = new OpenApiSchemaReference("ResponseRoot") }
+                        }
+                    }
+                },
+                Schemas = new Dictionary<string, IOpenApiSchema>
+                {
+                    ["RequestRoot"] = new OpenApiSchema
+                    {
+                        Properties = new Dictionary<string, IOpenApiSchema>
+                        {
+                            ["child"] = new OpenApiSchemaReference("RequestChild")
+                        }
+                    },
+                    ["RequestChild"] = new OpenApiSchema(),
+                    ["ResponseRoot"] = new OpenApiSchema
+                    {
+                        Not = new OpenApiSchemaReference("ResponseChild")
+                    },
+                    ["ResponseChild"] = new OpenApiSchema(),
+                    ["Unused"] = new OpenApiSchema()
+                }
+            }
+        };
+
+        OpenApiSchemaReferenceCollector.GetReferencedSchemaRefs(document)
+                                       .ShouldBe(["RequestRoot", "ResponseRoot", "RequestChild", "ResponseChild"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void schema_graph_transformer_rewrites_component_and_operation_schema_references()
+    {
+        var document = new OpenApiDocument
+        {
+            Paths = new()
+            {
+                ["/transformer"] = new OpenApiPathItem
+                {
+                    Operations = new()
+                    {
+                        [HttpMethod.Post] = new()
+                        {
+                            RequestBody = new OpenApiRequestBody
+                            {
+                                Content = new Dictionary<string, OpenApiMediaType>
+                                {
+                                    ["application/json"] = new() { Schema = new OpenApiSchemaReference("Old") }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            Components = new()
+            {
+                Schemas = new Dictionary<string, IOpenApiSchema>
+                {
+                    ["Root"] = new OpenApiSchema
+                    {
+                        Properties = new Dictionary<string, IOpenApiSchema>
+                        {
+                            ["child"] = new OpenApiSchemaReference("Old")
+                        }
+                    }
+                }
+            }
+        };
+
+        OpenApiSchemaGraphTransformer.TransformDocumentSchemas(
+            document,
+            schema => schema is OpenApiSchemaReference schemaRef && GetReferenceId(schemaRef) == "Old"
+                          ? new OpenApiSchemaReference("New")
+                          : schema);
+
+        var operationSchema = document.Paths["/transformer"].Operations![HttpMethod.Post].RequestBody!.Content!["application/json"].Schema;
+        var componentSchema = ((OpenApiSchema)document.Components.Schemas["Root"]).Properties!["child"];
+
+        GetReferenceId((OpenApiSchemaReference)operationSchema!).ShouldBe("New");
+        GetReferenceId((OpenApiSchemaReference)componentSchema).ShouldBe("New");
+    }
+
+    [Fact]
     public void clone_as_concrete_schema_deep_copies_mutable_members()
     {
         IOpenApiSchema schema = new OpenApiSchema
@@ -1319,6 +1439,9 @@ public class OperationSchemaHelpersTests : TestBase<Fixture>
         transformerType.GetMethod("AddParameter", BindingFlags.Instance | BindingFlags.NonPublic)!
                        .Invoke(transformer, [operation, name, location, prop, isRequired, false, null]);
     }
+
+    static string? GetReferenceId(OpenApiSchemaReference schemaRef)
+        => schemaRef.Reference.Id ?? schemaRef.Id;
 
     sealed class ConstructorDefaultQueryRequest
     {
