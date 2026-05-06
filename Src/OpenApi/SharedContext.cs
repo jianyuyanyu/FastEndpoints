@@ -44,6 +44,19 @@ internal class SharedContext
 
     readonly ConcurrentDictionary<OperationSchemaVariantKey, OperationSchemaVariant> _operationSchemaVariantKeys = new();
 
+    internal IEnumerable<KeyValuePair<OperationSchemaVariantKey, OperationSchemaVariant>> EnumerateOperationSchemaVariants()
+        => _operationSchemaVariantKeys;
+
+    internal void ResetPerDocumentState()
+    {
+        Operations.Clear();
+        SecurityRequirements.Clear();
+        MissingSchemaTypes.Clear();
+        PromotedRequestWrapperSchemaRefs.Clear();
+        OperationSchemaVariants.Clear();
+        _operationSchemaVariantKeys.Clear();
+    }
+
     internal bool TryGetOperationSchemaVariant(string refId, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out OpenApiSchema? schema)
         => OperationSchemaVariants.TryGetValue(refId, out schema);
 

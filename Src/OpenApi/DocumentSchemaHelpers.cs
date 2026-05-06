@@ -162,6 +162,54 @@ static class DocumentSchemaHelpers
                 schemas.Remove(duplicateRefId);
         }
 
+        internal void CollapseExclusiveOperationSchemaVariants(SharedContext sharedCtx)
+        {
+            if (sharedCtx.OperationSchemaVariants.IsEmpty || document.Components?.Schemas is not { Count: > 0 } schemas)
+                return;
+
+            var variantGroups = sharedCtx.EnumerateOperationSchemaVariants()
+                                       .GroupBy(static kvp => kvp.Key.SourceRefId, StringComparer.Ordinal)
+                                       .Select(g => new
+                                       {
+                                           SourceRefId = g.Key,
+                                           Variants = g.Where(kvp => schemas.ContainsKey(kvp.Value.RefId)).ToArray()
+                                       })
+                                       .Where(static g => g.Variants.Length > 0)
+                                       .ToArray();
+
+            if (variantGroups.Length == 0)
+                return;
+
+            var referencedSchemas = document.GetReferencedSchemaRefs();
+            var collapseAliases = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            foreach (var group in variantGroups)
+            {
+                var sourceRefId = group.SourceRefId;
+                var sourceExists = schemas.ContainsKey(sourceRefId);
+
+                if (group.Variants.Length != 1 ||
+                    (sourceExists && referencedSchemas.Contains(sourceRefId)))
+                    continue;
+
+                var variantRefId = group.Variants[0].Value.RefId;
+
+                if (!schemas.TryGetValue(variantRefId, out var variantSchema) || VariantReferencesRefId(variantSchema, sourceRefId))
+                    continue;
+
+                schemas[sourceRefId] = variantSchema;
+                collapseAliases[variantRefId] = sourceRefId;
+            }
+
+            if (collapseAliases.Count == 0)
+                return;
+
+            RewriteSchemaRefs(document, collapseAliases);
+
+            foreach (var variantRefId in collapseAliases.Keys)
+                schemas.Remove(variantRefId);
+        }
+
         internal async Task AddMissingSchemas(SharedContext sharedCtx, OpenApiDocumentTransformerContext context, CancellationToken ct)
         {
             if (sharedCtx.MissingSchemaTypes.IsEmpty)
@@ -265,6 +313,15 @@ static class DocumentSchemaHelpers
             aliases[traversedAlias] = refId;
 
         return refId;
+    }
+
+    static bool VariantReferencesRefId(IOpenApiSchema? schema, string targetRefId)
+    {
+        var refs = new HashSet<string>(StringComparer.Ordinal);
+        var pendingRefs = new Queue<string>();
+        CollectSchemaRefs(schema, refs, pendingRefs);
+
+        return refs.Contains(targetRefId);
     }
 
     static string GetSchemaSignature(string refId,

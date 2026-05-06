@@ -60,8 +60,13 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
         var initialSchema = doc["paths"]!["/api/swagger-review/version-prefilter-initial"]!["post"]!
             ["requestBody"]!["content"]!["application/json"]!["schema"]!;
 
-        initialSchema["$ref"]!.Value<string>().ShouldStartWith("#/components/schemas/TestCasesSwaggerReviewVersionPrefilterSharedRequest__op");
+        initialSchema["$ref"]!.Value<string>().ShouldBe("#/components/schemas/TestCasesSwaggerReviewVersionPrefilterSharedRequest");
         initialSchema["properties"].ShouldBeNull();
+        doc["components"]!["schemas"]!["TestCasesSwaggerReviewVersionPrefilterSharedRequest"]!["properties"]!["name"]!["description"]!
+           .Value<string>()
+           .ShouldBe("initial description");
+        ((JObject)doc["components"]!["schemas"]!).Properties().Any(p => p.Name.StartsWith("TestCasesSwaggerReviewVersionPrefilterSharedRequest__op", StringComparison.Ordinal))
+           .ShouldBeFalse();
         doc["paths"]!["/api/swagger-review/version-prefilter-v1"].ShouldBeNull();
     }
 
@@ -224,12 +229,13 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
         var doc = JToken.Parse(json);
         var requestSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/promoted-body-validation/{id}"]!["post"]!
             ["requestBody"]!["content"]!["application/json"]!["schema"]!);
-        var schema = requestSchema;
+        var childSchema = ResolveSchema(doc, requestSchema["properties"]!["child"]!);
 
-        schema["properties"]!["body"].ShouldBeNull();
-        schema["properties"]!["name"]!["minLength"]!.Value<int>().ShouldBe(3);
-        schema["required"]!.Values<string>().ShouldContain("name");
-        var childSchema = ResolveSchema(doc, schema["properties"]!["child"]!);
+        requestSchema["properties"]!["body"].ShouldBeNull();
+        requestSchema["properties"]!["name"]!["minLength"]!.Value<int>().ShouldBe(3);
+        requestSchema["required"]!.Values<string>().ShouldContain("name");
+        requestSchema["properties"]!["child"]!["$ref"]!.Value<string>()
+                    .ShouldBe("#/components/schemas/TestCasesSwaggerReviewPromotedBodyValidationChild");
         childSchema["properties"]!["code"]!["minLength"]!.Value<int>().ShouldBe(2);
         childSchema["required"]!.Values<string>().ShouldContain("code");
     }
@@ -466,11 +472,11 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
         var doc = JToken.Parse(json);
         var requestSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/child-validator"]!["post"]!
             ["requestBody"]!["content"]!["application/json"]!["schema"]!);
-        var childSchema = doc["components"]!["schemas"]!["TestCasesSwaggerReviewChildValidatorReviewChild"]!;
+        var childSchema = ResolveSchema(doc, requestSchema["properties"]!["child"]!);
 
-        var requestChildSchema = ResolveSchema(doc, requestSchema["properties"]!["child"]!);
-        requestChildSchema["properties"]!["score"]!["exclusiveMinimum"]!.Value<int>().ShouldBe(10);
-        childSchema.ShouldBeNull();
+        requestSchema["properties"]!["child"]!["$ref"]!.Value<string>()
+                    .ShouldBe("#/components/schemas/TestCasesSwaggerReviewChildValidatorReviewChild");
+        childSchema["properties"]!["score"]!["exclusiveMinimum"]!.Value<int>().ShouldBe(10);
     }
 
     [Fact]
@@ -480,12 +486,13 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
         var doc = JToken.Parse(json);
         var requestSchema = ResolveSchema(doc, doc["paths"]!["/api/swagger-review/deep-nested-validator"]!["post"]!
             ["requestBody"]!["content"]!["application/json"]!["schema"]!);
-        var grandChildSchema = doc["components"]!["schemas"]!["TestCasesSwaggerReviewDeepNestedValidatorReviewGrandChild"]!;
+        var childSchema = doc["components"]!["schemas"]!["TestCasesSwaggerReviewDeepNestedValidatorReviewChild"]!;
+        var grandChildSchema = ResolveSchema(doc, childSchema["properties"]!["subChild"]!);
 
-        var childSchema = ResolveSchema(doc, requestSchema["properties"]!["child"]!);
-        var subChildSchema = ResolveSchema(doc, childSchema["properties"]!["subChild"]!);
-        subChildSchema["properties"]!["field"]!["minLength"]!.Value<int>().ShouldBe(5);
-        grandChildSchema.ShouldBeNull();
+        ResolveSchema(doc, requestSchema["properties"]!["child"]!).ShouldBe(childSchema);
+        childSchema["properties"]!["subChild"]!["$ref"]!.Value<string>()
+                   .ShouldBe("#/components/schemas/TestCasesSwaggerReviewDeepNestedValidatorReviewGrandChild");
+        grandChildSchema["properties"]!["field"]!["minLength"]!.Value<int>().ShouldBe(5);
     }
 
     [Fact]
@@ -749,6 +756,36 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
         routedParams.ShouldNotContain(p => p.Name == "refererID");
     }
 
+    [Fact]
+    public async Task initial_release_does_not_keep_lone_unshared_operation_variants()
+    {
+        var json = await App.GetDocumentJsonAsync("Initial Release");
+        var doc = (JObject)JToken.Parse(json);
+        var schemas = (JObject)doc["components"]!["schemas"]!;
+        var variantIds = schemas.Properties()
+                                .Select(p => p.Name)
+                                .Where(static n => n.Contains("__op", StringComparison.Ordinal))
+                                .ToArray();
+        var offenders = new List<string>();
+
+        foreach (var group in variantIds.GroupBy(GetVariantSourceRefId, StringComparer.Ordinal))
+        {
+            if (group.Count() != 1)
+                continue;
+
+            var sourceRefId = group.Key;
+            var sourceExists = schemas.Property(sourceRefId) is not null;
+            var sourceRefToken = $"#/components/schemas/{sourceRefId}";
+            var sourceRefCount = doc.SelectTokens("$..$ref")
+                                    .Count(t => string.Equals(t.Value<string>(), sourceRefToken, StringComparison.Ordinal));
+
+            if (!sourceExists && sourceRefCount == 0)
+                offenders.Add(group.Single());
+        }
+
+        offenders.ShouldBeEmpty();
+    }
+
     static JToken ResolveSchema(JToken document, JToken schema)
     {
         var refValue = schema["$ref"]?.Value<string>();
@@ -759,5 +796,12 @@ public class OperationTransformerEdgeCaseTests(Fixture App) : TestBase<Fixture>
         var schemaKey = refValue[(refValue.LastIndexOf('/') + 1)..];
 
         return document["components"]!["schemas"]![schemaKey]!;
+    }
+
+    static string GetVariantSourceRefId(string refId)
+    {
+        var suffixIndex = refId.LastIndexOf("__op", StringComparison.Ordinal);
+
+        return suffixIndex < 0 ? refId : refId[..suffixIndex];
     }
 }

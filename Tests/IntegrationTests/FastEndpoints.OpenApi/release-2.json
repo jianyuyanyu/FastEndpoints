@@ -22,7 +22,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminLoginRequest__op04405725D808"
+                "$ref": "#/components/schemas/AdminLoginRequest"
               },
               "example": {
                 "userName": "custom example user name from summary",
@@ -79,7 +79,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminLoginRequest__op04405725D808"
+                "$ref": "#/components/schemas/AdminLoginRequest"
               },
               "example": {
                 "userName": "custom example user name from summary",
@@ -136,7 +136,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminLoginRequest__op04405725D808"
+                "$ref": "#/components/schemas/AdminLoginRequest"
               },
               "example": {
                 "userName": "custom example user name from summary",
@@ -195,7 +195,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminLoginRequest__op04405725D808"
+                "$ref": "#/components/schemas/AdminLoginRequest"
               },
               "example": {
                 "userName": "custom example user name from summary",
@@ -252,7 +252,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminLoginRequest__op04405725D808"
+                "$ref": "#/components/schemas/AdminLoginRequest"
               },
               "example": {
                 "userName": "custom example user name from summary",
@@ -309,7 +309,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminLoginRequest__op04405725D808"
+                "$ref": "#/components/schemas/AdminLoginRequest"
               },
               "example": {
                 "userName": "custom example user name from summary",
@@ -821,7 +821,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CustomersUpdateRequest__op51B5B2D42834"
+                "$ref": "#/components/schemas/CustomersUpdateRequest"
               }
             }
           },
@@ -968,7 +968,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CustomersUpdateRequest__op51B5B2D42834"
+                "$ref": "#/components/schemas/CustomersUpdateRequest"
               }
             }
           },
@@ -1021,7 +1021,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CustomersUpdateWithHeaderRequest__opDD79A689CFA1"
+                "$ref": "#/components/schemas/CustomersUpdateWithHeaderRequest"
               }
             }
           },
@@ -1325,7 +1325,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InventoryGetProductResponse__op2A0261AE0D75"
+                  "$ref": "#/components/schemas/InventoryGetProductResponse"
                 }
               }
             }
@@ -1383,7 +1383,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/InventoryManageCreateRequest__op120F051DDABC"
+                "$ref": "#/components/schemas/InventoryManageCreateRequest"
               },
               "examples": {
                 "Example 1": {
@@ -1465,7 +1465,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/InventoryManageUpdateRequest__op226B0544409C"
+                "$ref": "#/components/schemas/InventoryManageUpdateRequest"
               }
             }
           },
@@ -1847,7 +1847,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesSwaggerReviewBindFromQueryPostReviewRequest__opE88326DE928A"
+                "$ref": "#/components/schemas/TestCasesSwaggerReviewBindFromQueryPostReviewRequest"
               }
             }
           },
@@ -1907,7 +1907,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesSwaggerReviewChildValidatorReviewRequest__op580CE6ECCA00"
+                "$ref": "#/components/schemas/TestCasesSwaggerReviewChildValidatorReviewRequest"
               }
             }
           },
@@ -1947,7 +1947,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesSwaggerReviewCollectionLengthReviewRequest__opD0B41904C810"
+                "$ref": "#/components/schemas/TestCasesSwaggerReviewCollectionLengthReviewRequest"
               }
             }
           },
@@ -2017,7 +2017,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesSwaggerReviewDeepNestedValidatorReviewRequest__opD38F93FB000B"
+                "$ref": "#/components/schemas/TestCasesSwaggerReviewDeepNestedValidatorReviewRequest"
               }
             }
           },
@@ -2118,7 +2118,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesSwaggerReviewDuplicateRequestExamplesRequest__op574C25CF8CEF"
+                "$ref": "#/components/schemas/TestCasesSwaggerReviewDuplicateRequestExamplesRequest"
               },
               "examples": {
                 "Example 1": {
@@ -2474,7 +2474,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesSwaggerReviewIllegalHeadersRequest__opF49CCD1F9584"
+                "$ref": "#/components/schemas/TestCasesSwaggerReviewIllegalHeadersRequest"
               }
             }
           },
@@ -2574,7 +2574,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesSwaggerReviewIntermediateBaseValidatorReviewRequest__op97ED9B7AF910"
+                "$ref": "#/components/schemas/TestCasesSwaggerReviewIntermediateBaseValidatorReviewRequest"
               }
             }
           },
@@ -2875,7 +2875,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesSwaggerReviewPromotedBodyValidationPayload__op0F58B2691132"
+                "$ref": "#/components/schemas/TestCasesSwaggerReviewPromotedBodyValidationPayload"
               },
               "example": {
                 "name": "example name",
@@ -2938,7 +2938,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesSwaggerReviewRequiredQueryParamReviewRequest__op7D8792A92714"
+                "$ref": "#/components/schemas/TestCasesSwaggerReviewRequiredQueryParamReviewRequest"
               }
             }
           },
@@ -2991,7 +2991,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesSwaggerReviewSharedNestedValidationAlphaRequest__opAB1BDD0D600A"
+                "$ref": "#/components/schemas/TestCasesSwaggerReviewSharedNestedValidationAlphaRequest"
               }
             }
           },
@@ -3441,7 +3441,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesDontBindAttributeTestRequest__op1B90C2C1A41C"
+                "$ref": "#/components/schemas/TestCasesDontBindAttributeTestRequest"
               }
             }
           },
@@ -4010,7 +4010,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesIncludedValidatorTestRequest__opDB0589027405"
+                "$ref": "#/components/schemas/TestCasesIncludedValidatorTestRequest"
               }
             }
           },
@@ -4572,7 +4572,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesPreProcessorIsRunOnValidationFailureRequest__op67A9EFA4F24E"
+                "$ref": "#/components/schemas/TestCasesPreProcessorIsRunOnValidationFailureRequest"
               }
             }
           },
@@ -5005,7 +5005,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TestCasesQueryObjectBindingTestResponse__opD9B4F2EF0CC8"
+                  "$ref": "#/components/schemas/TestCasesQueryObjectBindingTestResponse"
                 }
               }
             }
@@ -5297,17 +5297,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesRouteBindingTestRequest__opF44B72F9F8F6"
+                "$ref": "#/components/schemas/TestCasesRouteBindingTestRequest"
               }
             },
             "test1/test1": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesRouteBindingTestRequest__opF44B72F9F8F6"
+                "$ref": "#/components/schemas/TestCasesRouteBindingTestRequest"
               }
             },
             "test2/test2": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesRouteBindingTestRequest__opF44B72F9F8F6"
+                "$ref": "#/components/schemas/TestCasesRouteBindingTestRequest"
               }
             }
           },
@@ -5592,12 +5592,12 @@
           "content": {
             "text/plain": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesTypedHeaderBindingTestMyRequest__op478C0C8D9502"
+                "$ref": "#/components/schemas/TestCasesTypedHeaderBindingTestMyRequest"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesTypedHeaderBindingTestMyRequest__op478C0C8D9502"
+                "$ref": "#/components/schemas/TestCasesTypedHeaderBindingTestMyRequest"
               }
             }
           },
@@ -6726,7 +6726,7 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/UploadsImageSaveRequest__op400FFD4F37E4"
+                "$ref": "#/components/schemas/UploadsImageSaveRequest"
               }
             }
           },
@@ -6760,7 +6760,7 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/UploadsImageSaveRequest__op400FFD4F37E4"
+                "$ref": "#/components/schemas/UploadsImageSaveRequest"
               }
             }
           },
@@ -6801,7 +6801,7 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/UploadsImageSaveTypedRequest__op805B5B156F6C"
+                "$ref": "#/components/schemas/UploadsImageSaveTypedRequest"
               }
             }
           },
@@ -6864,7 +6864,7 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/UploadsImageSaveTypedRequest__op805B5B156F6C"
+                "$ref": "#/components/schemas/UploadsImageSaveTypedRequest"
               }
             }
           },
@@ -7003,12 +7003,12 @@
           "content": {
             "text/plain": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesGlobalRoutePrefixOverrideTestRequest__opC08D18730DBA"
+                "$ref": "#/components/schemas/TestCasesGlobalRoutePrefixOverrideTestRequest"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesGlobalRoutePrefixOverrideTestRequest__opC08D18730DBA"
+                "$ref": "#/components/schemas/TestCasesGlobalRoutePrefixOverrideTestRequest"
               }
             }
           },
@@ -7118,12 +7118,12 @@
           "content": {
             "text/plain": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesPlainTextRequestTestRequest__op29F787672D07"
+                "$ref": "#/components/schemas/TestCasesPlainTextRequestTestRequest"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TestCasesPlainTextRequestTestRequest__op29F787672D07"
+                "$ref": "#/components/schemas/TestCasesPlainTextRequestTestRequest"
               }
             }
           },
@@ -7181,7 +7181,7 @@
   },
   "components": {
     "schemas": {
-      "AdminLoginRequest__op04405725D808": {
+      "AdminLoginRequest": {
         "required": [
           "userName",
           "password"
@@ -7307,7 +7307,7 @@
           }
         }
       },
-      "CustomersUpdateRequest__op51B5B2D42834": {
+      "CustomersUpdateRequest": {
         "type": "object",
         "properties": {
           "age": {
@@ -7319,7 +7319,7 @@
           }
         }
       },
-      "CustomersUpdateWithHeaderRequest__opDD79A689CFA1": {
+      "CustomersUpdateWithHeaderRequest": {
         "required": [
           "name",
           "age",
@@ -7486,7 +7486,7 @@
         },
         "description": "base dto for access/refresh token responses"
       },
-      "InventoryGetProductResponse__op2A0261AE0D75": {
+      "InventoryGetProductResponse": {
         "type": "object",
         "properties": {
           "productID": {
@@ -7513,7 +7513,7 @@
           }
         }
       },
-      "InventoryManageCreateRequest__op120F051DDABC": {
+      "InventoryManageCreateRequest": {
         "required": [
           "name",
           "modifiedBy"
@@ -7567,7 +7567,7 @@
           "generateFullUrl": false
         }
       },
-      "InventoryManageUpdateRequest__op226B0544409C": {
+      "InventoryManageUpdateRequest": {
         "required": [
           "id",
           "name",
@@ -8122,7 +8122,7 @@
           }
         }
       },
-      "TestCasesDontBindAttributeTestRequest__op1B90C2C1A41C": {
+      "TestCasesDontBindAttributeTestRequest": {
         "type": "object",
         "properties": {
           "id": {
@@ -8427,7 +8427,7 @@
           }
         }
       },
-      "TestCasesGlobalRoutePrefixOverrideTestRequest__opC08D18730DBA": {
+      "TestCasesGlobalRoutePrefixOverrideTestRequest": {
         "type": "object",
         "properties": {
           "content": {
@@ -8506,7 +8506,7 @@
           }
         }
       },
-      "TestCasesIncludedValidatorTestRequest__opDB0589027405": {
+      "TestCasesIncludedValidatorTestRequest": {
         "required": [
           "name",
           "id"
@@ -8672,7 +8672,7 @@
           }
         }
       },
-      "TestCasesPlainTextRequestTestRequest__op29F787672D07": {
+      "TestCasesPlainTextRequestTestRequest": {
         "type": "object",
         "properties": {
           "content": {
@@ -8701,7 +8701,7 @@
           }
         }
       },
-      "TestCasesPreProcessorIsRunOnValidationFailureRequest__op67A9EFA4F24E": {
+      "TestCasesPreProcessorIsRunOnValidationFailureRequest": {
         "required": [
           "firstName"
         ],
@@ -8820,7 +8820,7 @@
           }
         }
       },
-      "TestCasesQueryObjectBindingTestResponse__opD9B4F2EF0CC8": {
+      "TestCasesQueryObjectBindingTestResponse": {
         "type": "object",
         "properties": {
           "string": {
@@ -9031,7 +9031,7 @@
           }
         }
       },
-      "TestCasesRouteBindingTestRequest__opF44B72F9F8F6": {
+      "TestCasesRouteBindingTestRequest": {
         "type": "object",
         "properties": {
           "url": {
@@ -9150,7 +9150,7 @@
           }
         }
       },
-      "TestCasesSwaggerReviewBindFromQueryPostReviewRequest__opE88326DE928A": {
+      "TestCasesSwaggerReviewBindFromQueryPostReviewRequest": {
         "type": "object",
         "properties": {
           "bodyValue": {
@@ -9158,7 +9158,7 @@
           }
         }
       },
-      "TestCasesSwaggerReviewChildValidatorReviewChild__opA032347DDB04": {
+      "TestCasesSwaggerReviewChildValidatorReviewChild": {
         "type": "object",
         "properties": {
           "score": {
@@ -9168,15 +9168,15 @@
           }
         }
       },
-      "TestCasesSwaggerReviewChildValidatorReviewRequest__op580CE6ECCA00": {
+      "TestCasesSwaggerReviewChildValidatorReviewRequest": {
         "type": "object",
         "properties": {
           "child": {
-            "$ref": "#/components/schemas/TestCasesSwaggerReviewChildValidatorReviewChild__opA032347DDB04"
+            "$ref": "#/components/schemas/TestCasesSwaggerReviewChildValidatorReviewChild"
           }
         }
       },
-      "TestCasesSwaggerReviewCollectionLengthReviewRequest__opD0B41904C810": {
+      "TestCasesSwaggerReviewCollectionLengthReviewRequest": {
         "required": [
           "tags"
         ],
@@ -9187,15 +9187,15 @@
           }
         }
       },
-      "TestCasesSwaggerReviewDeepNestedValidatorReviewChild__op1FB3B344C7A2": {
+      "TestCasesSwaggerReviewDeepNestedValidatorReviewChild": {
         "type": "object",
         "properties": {
           "subChild": {
-            "$ref": "#/components/schemas/TestCasesSwaggerReviewDeepNestedValidatorReviewGrandChild__op5F820E363238"
+            "$ref": "#/components/schemas/TestCasesSwaggerReviewDeepNestedValidatorReviewGrandChild"
           }
         }
       },
-      "TestCasesSwaggerReviewDeepNestedValidatorReviewGrandChild__op5F820E363238": {
+      "TestCasesSwaggerReviewDeepNestedValidatorReviewGrandChild": {
         "type": "object",
         "properties": {
           "field": {
@@ -9204,11 +9204,11 @@
           }
         }
       },
-      "TestCasesSwaggerReviewDeepNestedValidatorReviewRequest__opD38F93FB000B": {
+      "TestCasesSwaggerReviewDeepNestedValidatorReviewRequest": {
         "type": "object",
         "properties": {
           "child": {
-            "$ref": "#/components/schemas/TestCasesSwaggerReviewDeepNestedValidatorReviewChild__op1FB3B344C7A2"
+            "$ref": "#/components/schemas/TestCasesSwaggerReviewDeepNestedValidatorReviewChild"
           }
         }
       },
@@ -9226,7 +9226,7 @@
           }
         }
       },
-      "TestCasesSwaggerReviewDuplicateRequestExamplesRequest__op574C25CF8CEF": {
+      "TestCasesSwaggerReviewDuplicateRequestExamplesRequest": {
         "type": "object",
         "properties": {
           "name": {
@@ -9281,7 +9281,7 @@
           }
         }
       },
-      "TestCasesSwaggerReviewIllegalHeadersRequest__opF49CCD1F9584": {
+      "TestCasesSwaggerReviewIllegalHeadersRequest": {
         "type": "object",
         "properties": {
           "bodyValue": {
@@ -9299,7 +9299,7 @@
         },
         "description": "returns the User record."
       },
-      "TestCasesSwaggerReviewIntermediateBaseValidatorReviewRequest__op97ED9B7AF910": {
+      "TestCasesSwaggerReviewIntermediateBaseValidatorReviewRequest": {
         "type": "object",
         "properties": {
           "name": {
@@ -9378,7 +9378,7 @@
           }
         }
       },
-      "TestCasesSwaggerReviewPromotedBodyValidationChild__opD55AA8092151": {
+      "TestCasesSwaggerReviewPromotedBodyValidationChild": {
         "required": [
           "code"
         ],
@@ -9393,7 +9393,7 @@
           "code": "xy"
         }
       },
-      "TestCasesSwaggerReviewPromotedBodyValidationPayload__op0F58B2691132": {
+      "TestCasesSwaggerReviewPromotedBodyValidationPayload": {
         "required": [
           "name"
         ],
@@ -9405,7 +9405,7 @@
             "example": "example name"
           },
           "child": {
-            "$ref": "#/components/schemas/TestCasesSwaggerReviewPromotedBodyValidationChild__opD55AA8092151"
+            "$ref": "#/components/schemas/TestCasesSwaggerReviewPromotedBodyValidationChild"
           }
         },
         "example": {
@@ -9415,7 +9415,7 @@
           }
         }
       },
-      "TestCasesSwaggerReviewRequiredQueryParamReviewRequest__op7D8792A92714": {
+      "TestCasesSwaggerReviewRequiredQueryParamReviewRequest": {
         "type": "object",
         "properties": {
           "bodyValue": {
@@ -9451,7 +9451,7 @@
           }
         }
       },
-      "TestCasesSwaggerReviewSharedNestedValidationAlphaRequest__opAB1BDD0D600A": {
+      "TestCasesSwaggerReviewSharedNestedValidationAlphaRequest": {
         "type": "object",
         "properties": {
           "address": {
@@ -9560,7 +9560,7 @@
           }
         }
       },
-      "TestCasesTypedHeaderBindingTestMyRequest__op478C0C8D9502": {
+      "TestCasesTypedHeaderBindingTestMyRequest": {
         "type": "object",
         "properties": {
           "content": {
@@ -9649,7 +9649,7 @@
           }
         }
       },
-      "UploadsImageSaveRequest__op400FFD4F37E4": {
+      "UploadsImageSaveRequest": {
         "type": "object",
         "properties": {
           "id": {
@@ -9669,7 +9669,7 @@
           }
         }
       },
-      "UploadsImageSaveTypedRequest__op805B5B156F6C": {
+      "UploadsImageSaveTypedRequest": {
         "type": "object",
         "properties": {
           "id": {
