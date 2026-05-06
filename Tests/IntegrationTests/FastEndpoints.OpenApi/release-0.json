@@ -5408,7 +5408,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SystemString[]"
+                  "$ref": "#/components/schemas/SystemStringArray"
                 }
               }
             }
@@ -7629,7 +7629,7 @@
         ],
         "type": "string"
       },
-      "SystemDouble[]": {
+      "SystemDoubleArray": {
         "type": "array",
         "items": {
           "type": "number",
@@ -7644,7 +7644,7 @@
         "type": "string",
         "format": "time"
       },
-      "SystemString[]": {
+      "SystemStringArray": {
         "minItems": 1,
         "type": "array",
         "items": {
@@ -7829,13 +7829,13 @@
         "type": "object",
         "properties": {
           "strings": {
-            "$ref": "#/components/schemas/SystemString[]"
+            "$ref": "#/components/schemas/SystemStringArray"
           },
           "moreStrings": {
-            "$ref": "#/components/schemas/SystemString[]"
+            "$ref": "#/components/schemas/SystemStringArray"
           },
           "doubles": {
-            "$ref": "#/components/schemas/SystemDouble[]"
+            "$ref": "#/components/schemas/SystemDoubleArray"
           },
           "ints": {
             "$ref": "#/components/schemas/SystemCollectionsGenericIEnumerableOfSystemInt32"
@@ -7875,7 +7875,7 @@
             "type": "string"
           },
           "notifications": {
-            "$ref": "#/components/schemas/TestCasesEventStreamTestSomeNotification[]"
+            "$ref": "#/components/schemas/TestCasesEventStreamTestSomeNotificationArray"
           }
         }
       },
@@ -7890,7 +7890,7 @@
           }
         }
       },
-      "TestCasesEventStreamTestSomeNotification[]": {
+      "TestCasesEventStreamTestSomeNotificationArray": {
         "type": "array",
         "items": {
           "$ref": "#/components/schemas/TestCasesEventStreamTestSomeNotification"
@@ -8194,7 +8194,7 @@
         "type": "object",
         "properties": {
           "doubles": {
-            "$ref": "#/components/schemas/SystemDouble[]"
+            "$ref": "#/components/schemas/SystemDoubleArray"
           },
           "ints": {
             "$ref": "#/components/schemas/SystemCollectionsGenericIEnumerableOfSystemInt32"
@@ -8558,7 +8558,7 @@
             "format": "int32"
           },
           "doubles": {
-            "$ref": "#/components/schemas/SystemDouble[]"
+            "$ref": "#/components/schemas/SystemDoubleArray"
           },
           "ints": {
             "$ref": "#/components/schemas/SystemCollectionsGenericIEnumerableOfSystemInt32"
@@ -9154,7 +9154,7 @@
         "type": "object",
         "properties": {
           "stringArray": {
-            "$ref": "#/components/schemas/SystemString[]"
+            "$ref": "#/components/schemas/SystemStringArray"
           }
         }
       },
@@ -9186,7 +9186,7 @@
         "type": "object",
         "properties": {
           "objectArray": {
-            "$ref": "#/components/schemas/TestCasesValidationErrorTestTObject[]"
+            "$ref": "#/components/schemas/TestCasesValidationErrorTestTObjectArray"
           }
         }
       },
@@ -9198,7 +9198,7 @@
           }
         }
       },
-      "TestCasesValidationErrorTestTObject[]": {
+      "TestCasesValidationErrorTestTObjectArray": {
         "type": "array",
         "items": {
           "$ref": "#/components/schemas/TestCasesValidationErrorTestTObject"

@@ -16,9 +16,8 @@ public class SnapshotTests(Fixture App) : TestBase<Fixture>
         if (await UpdateSnapshotIfEnabled("release-0.json", json))
             Assert.Fail("Snapshot updated! Turn off snapshot updating to run tests...");
 
-        var currentDoc = JToken.Parse(json);
         var snapshot = await File.ReadAllTextAsync("release-0.json", Cancellation);
-        currentDoc.ShouldBeEquivalentTo(JToken.Parse(snapshot));
+        JsonSnapshotComparer.AssertMatches(json, snapshot);
     }
 
     [Fact]
@@ -29,9 +28,8 @@ public class SnapshotTests(Fixture App) : TestBase<Fixture>
         if (await UpdateSnapshotIfEnabled("release-1.json", json))
             Assert.Fail("Snapshot updated! Turn off snapshot updating to run tests...");
 
-        var currentDoc = JToken.Parse(json);
         var snapshot = await File.ReadAllTextAsync("release-1.json", Cancellation);
-        currentDoc.ShouldBeEquivalentTo(JToken.Parse(snapshot));
+        JsonSnapshotComparer.AssertMatches(json, snapshot);
     }
 
     [Fact]
@@ -42,9 +40,8 @@ public class SnapshotTests(Fixture App) : TestBase<Fixture>
         if (await UpdateSnapshotIfEnabled("release-2.json", json))
             Assert.Fail("Snapshot updated! Turn off snapshot updating to run tests...");
 
-        var currentDoc = JToken.Parse(json);
         var snapshot = await File.ReadAllTextAsync("release-2.json", Cancellation);
-        currentDoc.ShouldBeEquivalentTo(JToken.Parse(snapshot));
+        JsonSnapshotComparer.AssertMatches(json, snapshot);
     }
 
     [Fact]
@@ -55,9 +52,8 @@ public class SnapshotTests(Fixture App) : TestBase<Fixture>
         if (await UpdateSnapshotIfEnabled("release-versioning-v0.json", json))
             Assert.Fail("Snapshot updated! Turn off snapshot updating to run tests...");
 
-        var currentDoc = JToken.Parse(json);
         var snapshot = await File.ReadAllTextAsync("release-versioning-v0.json", Cancellation);
-        currentDoc.ShouldBeEquivalentTo(JToken.Parse(snapshot));
+        JsonSnapshotComparer.AssertMatches(json, snapshot);
     }
 
     [Fact]
@@ -68,9 +64,8 @@ public class SnapshotTests(Fixture App) : TestBase<Fixture>
         if (await UpdateSnapshotIfEnabled("release-versioning-v1.json", json))
             Assert.Fail("Snapshot updated! Turn off snapshot updating to run tests...");
 
-        var currentDoc = JToken.Parse(json);
         var snapshot = await File.ReadAllTextAsync("release-versioning-v1.json", Cancellation);
-        currentDoc.ShouldBeEquivalentTo(JToken.Parse(snapshot));
+        JsonSnapshotComparer.AssertMatches(json, snapshot);
     }
 
     [Fact]
@@ -81,9 +76,8 @@ public class SnapshotTests(Fixture App) : TestBase<Fixture>
         if (await UpdateSnapshotIfEnabled("release-versioning-v2.json", json))
             Assert.Fail("Snapshot updated! Turn off snapshot updating to run tests...");
 
-        var currentDoc = JToken.Parse(json);
         var snapshot = await File.ReadAllTextAsync("release-versioning-v2.json", Cancellation);
-        currentDoc.ShouldBeEquivalentTo(JToken.Parse(snapshot));
+        JsonSnapshotComparer.AssertMatches(json, snapshot);
     }
 
     [Fact]
@@ -94,9 +88,8 @@ public class SnapshotTests(Fixture App) : TestBase<Fixture>
         if (await UpdateSnapshotIfEnabled("release-versioning-v3.json", json))
             Assert.Fail("Snapshot updated! Turn off snapshot updating to run tests...");
 
-        var currentDoc = JToken.Parse(json);
         var snapshot = await File.ReadAllTextAsync("release-versioning-v3.json", Cancellation);
-        currentDoc.ShouldBeEquivalentTo(JToken.Parse(snapshot));
+        JsonSnapshotComparer.AssertMatches(json, snapshot);
     }
 
     // ReSharper disable once UnusedMember.Local
@@ -110,4 +103,5 @@ public class SnapshotTests(Fixture App) : TestBase<Fixture>
 
         return true;
     }
+
 }
