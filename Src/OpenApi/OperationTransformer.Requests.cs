@@ -208,7 +208,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
 
                 if (prop is not null)
                 {
-                    var defaultAttr = prop.GetCustomAttribute<System.ComponentModel.DefaultValueAttribute>();
+                    var defaultAttr = GetPropertyMetadata(prop).DefaultValue;
 
                     if (defaultAttr?.Value is not null && concreteParam.Schema is OpenApiSchema paramSchema)
                         paramSchema.Default = defaultAttr.Value.JsonNodeFromObject(SerializerOptions);
@@ -366,7 +366,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
 
             foreach (var prop in GetPublicInstanceProperties(requestType))
             {
-                var defaultAttr = prop.GetCustomAttribute<System.ComponentModel.DefaultValueAttribute>();
+                var defaultAttr = GetPropertyMetadata(prop).DefaultValue;
 
                 if (defaultAttr?.Value is null)
                     continue;
@@ -426,15 +426,17 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
 
         string GetEffectiveParameterName(PropertyInfo property, ParameterLocation location)
         {
+            var metadata = GetPropertyMetadata(property);
+
             if (location == ParameterLocation.Header)
-                return property.GetCustomAttribute<FromHeaderAttribute>()?.HeaderName ?? property.Name.ApplyPropNamingPolicy(docOpts, NamingPolicy);
+                return metadata.FromHeader?.HeaderName ?? property.Name.ApplyPropNamingPolicy(docOpts, NamingPolicy);
 
             if (location == ParameterLocation.Cookie)
-                return property.GetCustomAttribute<FromCookieAttribute>()?.CookieName ?? property.Name.ApplyPropNamingPolicy(docOpts, NamingPolicy);
+                return metadata.FromCookie?.CookieName ?? property.Name.ApplyPropNamingPolicy(docOpts, NamingPolicy);
 
             if (location == ParameterLocation.Path)
             {
-                return property.GetCustomAttribute<BindFromAttribute>()?.Name.ApplyPropNamingPolicy(docOpts, NamingPolicy) ??
+                return metadata.BindFrom?.Name.ApplyPropNamingPolicy(docOpts, NamingPolicy) ??
                        property.Name.ApplyPropNamingPolicy(docOpts, NamingPolicy);
             }
 
@@ -512,9 +514,11 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
             {
                 var p = requestDtoProps[i];
 
-                if (p.GetCustomAttribute<JsonIgnoreAttribute>()?.Condition != JsonIgnoreCondition.Always &&
-                    !p.IsDefined(Types.HideFromDocsAttribute) &&
-                    p.GetSetMethod()?.IsPublic is true)
+                var metadata = GetPropertyMetadata(p);
+
+                if (!metadata.IsJsonIgnoredAlways &&
+                    !metadata.IsHiddenFromDocs &&
+                    metadata.HasPublicSetter)
                     continue;
 
                 requestDtoProps.RemoveAt(i);
@@ -568,13 +572,13 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
         }
 
         string GetQueryParameterName(PropertyInfo property)
-            => property.GetCustomAttribute<BindFromAttribute>()?.Name ?? property.Name.ApplyPropNamingPolicy(docOpts, NamingPolicy);
+            => GetPropertyMetadata(property).BindFrom?.Name ?? property.Name.ApplyPropNamingPolicy(docOpts, NamingPolicy);
 
         bool TryAddComplexFromQueryParameters(OpenApiOperation operation, PropertyInfo property, bool shortSchemaNames)
         {
             var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
 
-            if (!property.IsDefined(typeof(FromQueryAttribute), false) ||
+            if (!GetPropertyMetadata(property).IsFromQuery ||
                 !propertyType.IsComplexType() ||
                 propertyType.IsCollection() ||
                 OperationSchemaHelpers.TryGetDictionaryValueType(propertyType) is not null)
@@ -598,7 +602,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
 
             foreach (var prop in GetBindableRequestProperties(type))
             {
-                if (prop.IsDefined(Types.HideFromDocsAttribute))
+                if (GetPropertyMetadata(prop).IsHiddenFromDocs)
                     continue;
 
                 var propName = GetQueryParameterName(prop);
@@ -677,7 +681,7 @@ sealed partial class RequestOperationTransformer(DocumentOptions docOpts, Shared
 
         void AddRouteParameter(OpenApiOperation operation, PropertyInfo p, Dictionary<string, RouteParameterInfo> routeParameters, RequestTransformState state, string operationKey)
         {
-            var bindName = p.GetCustomAttribute<BindFromAttribute>()?.Name ?? p.Name;
+            var bindName = GetPropertyMetadata(p).BindFrom?.Name ?? p.Name;
 
             if (!routeParameters.TryGetValue(bindName, out var matchingRouteParam))
                 return;

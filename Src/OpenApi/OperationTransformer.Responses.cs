@@ -319,7 +319,7 @@ sealed class ResponseOperationTransformer(DocumentOptions docOpts, SharedContext
         {
             foreach (var prop in GetPublicInstanceProperties(responseType))
             {
-                var toHeaderAttr = prop.GetCustomAttribute<ToHeaderAttribute>();
+                var toHeaderAttr = GetPropertyMetadata(prop).ToHeader;
 
                 if (toHeaderAttr is null)
                     continue;
